@@ -1,9 +1,9 @@
 /*
-* Vulkan Example - Shadow mapping for directional light sources
+* Vulkan サンプル - 指向性光源のシャドウマッピング
 *
 * Copyright (C) 2016-2023 by Sascha Willems - www.saschawillems.de
 *
-* This code is licensed under the MIT license (MIT) (http://opensource.org/licenses/MIT)
+* このコードは MIT ライセンス (MIT) (http://opensource.org/licenses/MIT) の下でライセンスされています。
 */
 
 #include "vulkanexamplebase.h"
@@ -15,15 +15,15 @@ public:
 	bool displayShadowMap = false;
 	bool filterPCF = true;
 
-	// Keep depth range as small as possible
-	// for better shadow map precision
+	// 深度範囲を可能な限り小さく保つ
+	// これによりシャドウマップの精度が向上する
 	float zNear = 1.0f;
 	float zFar = 96.0f;
 
-	// Depth bias (and slope) are used to avoid shadowing artifacts
-	// Constant depth bias factor (always applied)
+	// 深度バイアス（およびスロープ）はシャドウイングのアーティファクトを避けるために使用される
+	// 定数深度バイアス係数（常に適用される）
 	float depthBiasConstant = 1.25f;
-	// Slope depth bias factor, applied depending on polygon's slope
+	// スロープ深度バイアス係数、ポリゴンの傾斜に応じて適用される
 	float depthBiasSlope = 1.75f;
 
 	glm::vec3 lightPos = glm::vec3();
@@ -39,7 +39,7 @@ public:
 		glm::mat4 model;
 		glm::mat4 depthBiasMVP;
 		glm::vec4 lightPos;
-		// Used for depth map visualization
+		// 深度マップの視覚化に使用
 		float zNear;
 		float zFar;
 	} uniformDataScene;
@@ -56,7 +56,7 @@ public:
 	struct {
 		VkPipeline offscreen{ VK_NULL_HANDLE };
 		VkPipeline sceneShadow{ VK_NULL_HANDLE };
-		// Pipeline with percentage close filtering (PCF) of the shadow map 
+		// シャドウマップのパーセンテージクローサーフィルタリング（PCF）付きパイプライン
 		VkPipeline sceneShadowPCF{ VK_NULL_HANDLE };
 		VkPipeline debug{ VK_NULL_HANDLE };
 	} pipelines;
@@ -69,7 +69,7 @@ public:
 	} descriptorSets;
 	VkDescriptorSetLayout descriptorSetLayout{ VK_NULL_HANDLE };
 
-	// Framebuffer for offscreen rendering
+	// オフスクリーンレンダリング用のフレームバッファ
 	struct FrameBufferAttachment {
 		VkImage image;
 		VkDeviceMemory mem;
@@ -84,11 +84,11 @@ public:
 		VkDescriptorImageInfo descriptor;
 	} offscreenPass{};
 
-	// 16 bits of depth is enough for such a small scene
+	// このような小さなシーンには16ビットの深度で十分
 	const VkFormat offscreenDepthFormat{ VK_FORMAT_D16_UNORM };
-	// Shadow map dimension
+	// シャドウマップの解像度
 #if defined(__ANDROID__)
-	// Use a smaller size on Android for performance reasons
+	// パフォーマンス上の理由からAndroidではより小さいサイズを使用する
 	const uint32_t shadowMapize{ 1024 };
 #else
 	const uint32_t shadowMapize{ 2048 };
@@ -107,10 +107,10 @@ public:
 	~VulkanExample()
 	{
 		if (device) {
-			// Frame buffer
+			// フレームバッファ
 			vkDestroySampler(device, offscreenPass.depthSampler, nullptr);
 
-			// Depth attachment
+			// 深度アタッチメント
 			vkDestroyImageView(device, offscreenPass.depth.view, nullptr);
 			vkDestroyImage(device, offscreenPass.depth.image, nullptr);
 			vkFreeMemory(device, offscreenPass.depth.mem, nullptr);
@@ -128,36 +128,36 @@ public:
 
 			vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
-			// Uniform buffers
+			// ユニフォームバッファ
 			uniformBuffers.offscreen.destroy();
 			uniformBuffers.scene.destroy();
 		}
 	}
 
-	// Set up a separate render pass for the offscreen frame buffer
-	// This is necessary as the offscreen frame buffer attachments use formats different to those from the example render pass
+	// オフスクリーンフレームバッファ用に別のレンダーパスを設定する
+	// これは、オフスクリーンフレームバッファのアタッチメントがサンプルのレンダーパスとは異なるフォーマットを使用するために必要
 	void prepareOffscreenRenderpass()
 	{
 		VkAttachmentDescription attachmentDescription{};
 		attachmentDescription.format = offscreenDepthFormat;
 		attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
-		attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;							// Clear depth at beginning of the render pass
-		attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;						// We will read from depth, so it's important to store the depth attachment results
+		attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;							// レンダーパスの開始時に深度をクリアする
+		attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;						// 深度から読み取るため、深度アタッチメントの結果をストアすることが重要
 		attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;					// We don't care about initial layout of the attachment
-		attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;// Attachment will be transitioned to shader read at render pass end
+		attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;					// アタッチメントの初期レイアウトは問わない
+		attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;// レンダーパスの終わりにアタッチメントはシェーダー読み取り用に遷移される
 
 		VkAttachmentReference depthReference = {};
 		depthReference.attachment = 0;
-		depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;			// Attachment will be used as depth/stencil during render pass
+		depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;			// レンダーパス中、アタッチメントは深度/ステンシルとして使用される
 
 		VkSubpassDescription subpass = {};
 		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.colorAttachmentCount = 0;													// No color attachments
-		subpass.pDepthStencilAttachment = &depthReference;									// Reference to our depth attachment
+		subpass.colorAttachmentCount = 0;													// カラーアタッチメントなし
+		subpass.pDepthStencilAttachment = &depthReference;									// 深度アタッチメントへの参照
 
-		// Use subpass dependencies for layout transitions
+		// レイアウト遷移にサブパス依存関係を使用する
 		std::array<VkSubpassDependency, 2> dependencies;
 
 		dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -187,14 +187,14 @@ public:
 		VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &offscreenPass.renderPass));
 	}
 
-	// Setup the offscreen framebuffer for rendering the scene from light's point-of-view to
-	// The depth attachment of this framebuffer will then be used to sample from in the fragment shader of the shadowing pass
+	// 光源の視点からシーンをレンダリングするためのオフスクリーンフレームバッファをセットアップする
+	// このフレームバッファの深度アタッチメントは、シャドウイングパスのフラグメントシェーダでサンプリングするために使用される
 	void prepareOffscreenFramebuffer()
 	{
 		offscreenPass.width = shadowMapize;
 		offscreenPass.height = shadowMapize;
 
-		// For shadow mapping we only need a depth attachment
+		// シャドウマッピングには深度アタッチメントのみが必要
 		VkImageCreateInfo image = vks::initializers::imageCreateInfo();
 		image.imageType = VK_IMAGE_TYPE_2D;
 		image.extent.width = offscreenPass.width;
@@ -204,8 +204,8 @@ public:
 		image.arrayLayers = 1;
 		image.samples = VK_SAMPLE_COUNT_1_BIT;
 		image.tiling = VK_IMAGE_TILING_OPTIMAL;
-		image.format = offscreenDepthFormat;																// Depth stencil attachment
-		image.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;		// We will sample directly from the depth attachment for the shadow mapping
+		image.format = offscreenDepthFormat;																// 深度ステンシルアタッチメント
+		image.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;		// シャドウマッピングのために深度アタッチメントから直接サンプリングする
 		VK_CHECK_RESULT(vkCreateImage(device, &image, nullptr, &offscreenPass.depth.image));
 
 		VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
@@ -228,8 +228,8 @@ public:
 		depthStencilView.image = offscreenPass.depth.image;
 		VK_CHECK_RESULT(vkCreateImageView(device, &depthStencilView, nullptr, &offscreenPass.depth.view));
 
-		// Create sampler to sample from to depth attachment
-		// Used to sample in the fragment shader for shadowed rendering
+		// 深度アタッチメントからサンプリングするためのサンプラーを作成
+		// 影付きレンダリングのフラグメントシェーダでサンプリングするために使用
 		VkFilter shadowmap_filter = vks::tools::formatIsFilterable(physicalDevice, offscreenDepthFormat, VK_IMAGE_TILING_OPTIMAL) ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
 		VkSamplerCreateInfo sampler = vks::initializers::samplerCreateInfo();
 		sampler.magFilter = shadowmap_filter;
@@ -247,7 +247,7 @@ public:
 
 		prepareOffscreenRenderpass();
 
-		// Create frame buffer
+		// フレームバッファを作成
 		VkFramebufferCreateInfo fbufCreateInfo = vks::initializers::framebufferCreateInfo();
 		fbufCreateInfo.renderPass = offscreenPass.renderPass;
 		fbufCreateInfo.attachmentCount = 1;
@@ -272,7 +272,7 @@ public:
 			VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers[i], &cmdBufInfo));
 
 			/*
-				First render pass: Generate shadow map by rendering the scene from light's POV
+				最初のレンダーパス：光源の視点からシーンをレンダリングしてシャドウマップを生成する
 			*/
 			{
 				clearValues[0].depthStencil = { 1.0f, 0 };
@@ -293,8 +293,8 @@ public:
 				scissor = vks::initializers::rect2D(offscreenPass.width, offscreenPass.height, 0, 0);
 				vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
 
-				// Set depth bias (aka "Polygon offset")
-				// Required to avoid shadow mapping artifacts
+				// 深度バイアス（別名「ポリゴンオフセット」）を設定
+				// シャドウマッピングのアーティファクトを避けるために必要
 				vkCmdSetDepthBias(
 					drawCmdBuffers[i],
 					depthBiasConstant,
@@ -309,11 +309,11 @@ public:
 			}
 
 			/*
-				Note: Explicit synchronization is not required between the render pass, as this is done implicit via sub pass dependencies
+				注意：レンダーパス間の明示的な同期は不要。これはサブパスの依存関係によって暗黙的に行われるため
 			*/
 
 			/*
-				Second pass: Scene rendering with applied shadow map
+				2番目のパス：シャドウマップを適用したシーンのレンダリング
 			*/
 
 			{
@@ -336,14 +336,14 @@ public:
 				scissor = vks::initializers::rect2D(width, height, 0, 0);
 				vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
 
-				// Visualize shadow map
+				// シャドウマップを視覚化
 				if (displayShadowMap) {
 					vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.debug, 0, nullptr);
 					vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.debug);
 					vkCmdDraw(drawCmdBuffers[i], 3, 1, 0, 0);
 				}
 				else {
-					// Render the shadows scene
+					// 影のあるシーンをレンダリング
 					vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.scene, 0, nullptr);
 					vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (filterPCF) ? pipelines.sceneShadowPCF : pipelines.sceneShadow);
 					scenes[sceneIndex].draw(drawCmdBuffers[i]);
@@ -369,7 +369,7 @@ public:
 
 	void setupDescriptors()
 	{
-		// Pool
+		// プール
 		std::vector<VkDescriptorPoolSize> poolSizes = {
 			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3),
 			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3)
@@ -377,51 +377,51 @@ public:
 		VkDescriptorPoolCreateInfo descriptorPoolInfo = vks::initializers::descriptorPoolCreateInfo(poolSizes, 3);
 		VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool));
 
-		// Layout
+		// レイアウト
 		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-			// Binding 0 : Vertex shader uniform buffer
+			// バインディング 0：頂点シェーダーのユニフォームバッファ
 			vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0),
-			// Binding 1 : Fragment shader image sampler (shadow map)
+			// バインディング 1：フラグメントシェーダーのイメージサンプラー（シャドウマップ）
 			vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
 		};
 		VkDescriptorSetLayoutCreateInfo descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings);
 		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorLayout, nullptr, &descriptorSetLayout));
 
-		// Sets
+		// セット
 		std::vector<VkWriteDescriptorSet> writeDescriptorSets;
 
-		// Image descriptor for the shadow map attachment
+		// シャドウマップアタッチメント用のイメージディスクリプタ
 		VkDescriptorImageInfo shadowMapDescriptor =
 			vks::initializers::descriptorImageInfo(
 				offscreenPass.depthSampler,
 				offscreenPass.depth.view,
 				VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
 
-		// Debug display
+		// デバッグ表示
 		VkDescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
 		VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSets.debug));
 		writeDescriptorSets = {
-			// Binding 0 : Parameters uniform buffer
+			// バインディング 0：パラメータのユニフォームバッファ
 			vks::initializers::writeDescriptorSet(descriptorSets.debug, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.scene.descriptor),
-			// Binding 1 : Fragment shader texture sampler
+			// バインディング 1：フラグメントシェーダーのテクスチャサンプラー
 			vks::initializers::writeDescriptorSet(descriptorSets.debug, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &shadowMapDescriptor)
 		};
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 
-		// Offscreen shadow map generation
+		// オフスクリーンのシャドウマップ生成
 		VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSets.offscreen));
 		writeDescriptorSets = {
-			// Binding 0 : Vertex shader uniform buffer
+			// バインディング 0：頂点シェーダーのユニフォームバッファ
 			vks::initializers::writeDescriptorSet(descriptorSets.offscreen, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.offscreen.descriptor),
 		};
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 
-		// Scene rendering with shadow map applied
+		// シャドウマップを適用したシーンのレンダリング
 		VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSets.scene));
 		writeDescriptorSets = {
-			// Binding 0 : Vertex shader uniform buffer
+			// バインディング 0：頂点シェーダーのユニフォームバッファ
 			vks::initializers::writeDescriptorSet(descriptorSets.scene, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.scene.descriptor),
-			// Binding 1 : Fragment shader shadow sampler
+			// バインディング 1：フラグメントシェーダーのシャドウサンプラー
 			vks::initializers::writeDescriptorSet(descriptorSets.scene, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &shadowMapDescriptor)
 		};
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
@@ -429,11 +429,11 @@ public:
 
 	void preparePipelines()
 	{
-		// Layout
+		// レイアウト
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo(&descriptorSetLayout, 1);
 		VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 
-		// Pipelines
+		// パイプライン
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCI = vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
 		VkPipelineRasterizationStateCreateInfo rasterizationStateCI = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 0);
 		VkPipelineColorBlendAttachmentState blendAttachmentState = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
@@ -456,42 +456,42 @@ public:
 		pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
 		pipelineCI.pStages = shaderStages.data();
 
-		// Shadow mapping debug quad display
+		// シャドウマッピングのデバッグ用クアッド表示
 		rasterizationStateCI.cullMode = VK_CULL_MODE_NONE;
 		shaderStages[0] = loadShader(getShadersPath() + "shadowmapping/quad.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		shaderStages[1] = loadShader(getShadersPath() + "shadowmapping/quad.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-		// Empty vertex input state
+		// 空の頂点入力ステート
 		VkPipelineVertexInputStateCreateInfo emptyInputState = vks::initializers::pipelineVertexInputStateCreateInfo();
 		pipelineCI.pVertexInputState = &emptyInputState;
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCI, nullptr, &pipelines.debug));
 
-		// Scene rendering with shadows applied
+		// 影を適用したシーンのレンダリング
 		pipelineCI.pVertexInputState = vkglTF::Vertex::getPipelineVertexInputState({ vkglTF::VertexComponent::Position, vkglTF::VertexComponent::UV, vkglTF::VertexComponent::Color, vkglTF::VertexComponent::Normal });
 		rasterizationStateCI.cullMode = VK_CULL_MODE_BACK_BIT;
 		shaderStages[0] = loadShader(getShadersPath() + "shadowmapping/scene.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		shaderStages[1] = loadShader(getShadersPath() + "shadowmapping/scene.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-		// Use specialization constants to select between horizontal and vertical blur
+		// 専門化定数を使用してPCFの有効/無効を切り替える
 		uint32_t enablePCF = 0;
 		VkSpecializationMapEntry specializationMapEntry = vks::initializers::specializationMapEntry(0, 0, sizeof(uint32_t));
 		VkSpecializationInfo specializationInfo = vks::initializers::specializationInfo(1, &specializationMapEntry, sizeof(uint32_t), &enablePCF);
 		shaderStages[1].pSpecializationInfo = &specializationInfo;
-		// No filtering
+		// フィルタリングなし
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCI, nullptr, &pipelines.sceneShadow));
-		// PCF filtering
+		// PCFフィルタリング
 		enablePCF = 1;
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCI, nullptr, &pipelines.sceneShadowPCF));
 
-		// Offscreen pipeline (vertex shader only)
+		// オフスクリーンパイプライン（頂点シェーダーのみ）
 		shaderStages[0] = loadShader(getShadersPath() + "shadowmapping/offscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		pipelineCI.stageCount = 1;
-		// No blend attachment states (no color attachments used)
+		// ブレンドアタッチメントステートなし（カラーアタッチメントは使用しない）
 		colorBlendStateCI.attachmentCount = 0;
-		// Disable culling, so all faces contribute to shadows
+		// カリングを無効にし、すべての面が影に寄与するようにする
 		rasterizationStateCI.cullMode = VK_CULL_MODE_NONE;
 		depthStencilStateCI.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-		// Enable depth bias
+		// 深度バイアスを有効化
 		rasterizationStateCI.depthBiasEnable = VK_TRUE;
-		// Add depth bias to dynamic state, so we can change it at runtime
+		// 実行時に変更できるよう、動的ステートに深度バイアスを追加
 		dynamicStateEnables.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
 		dynamicStateCI = vks::initializers::pipelineDynamicStateCreateInfo(dynamicStateEnables);
 
@@ -499,14 +499,14 @@ public:
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCI, nullptr, &pipelines.offscreen));
 	}
 
-	// Prepare and initialize uniform buffer containing shader uniforms
+	// シェーダーユニフォームを含むユニフォームバッファを準備・初期化する
 	void prepareUniformBuffers()
 	{
-		// Offscreen vertex shader uniform buffer block
+		// オフスクリーン用頂点シェーダーのユニフォームバッファブロック
 		VK_CHECK_RESULT(vulkanDevice->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniformBuffers.offscreen, sizeof(UniformDataOffscreen)));
-		// Scene vertex shader uniform buffer block
+		// シーン用頂点シェーダーのユニフォームバッファブロック
 		VK_CHECK_RESULT(vulkanDevice->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniformBuffers.scene, sizeof(UniformDataScene)));
-		// Map persistent
+		// 永続的にマップする
 		VK_CHECK_RESULT(uniformBuffers.offscreen.map());
 		VK_CHECK_RESULT(uniformBuffers.scene.map());
 
@@ -517,7 +517,7 @@ public:
 
 	void updateLight()
 	{
-		// Animate the light source
+		// 光源をアニメーションさせる
 		lightPos.x = cos(glm::radians(timer * 360.0f)) * 40.0f;
 		lightPos.y = -50.0f + sin(glm::radians(timer * 360.0f)) * 20.0f;
 		lightPos.z = 25.0f + sin(glm::radians(timer * 360.0f)) * 5.0f;
@@ -537,7 +537,7 @@ public:
 
 	void updateUniformBufferOffscreen()
 	{
-		// Matrix from light's point of view
+		// 光源の視点からの行列
 		glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(lightFOV), 1.0f, zNear, zFar);
 		glm::mat4 depthViewMatrix = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
 		glm::mat4 depthModelMatrix = glm::mat4(1.0f);
