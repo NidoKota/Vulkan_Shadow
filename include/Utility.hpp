@@ -19,7 +19,7 @@
 #include "AndroidOut.h"
 #endif
 
-namespace Vulkan_Test
+namespace Vulkan_Shadow
 {
     using namespace std;
 
