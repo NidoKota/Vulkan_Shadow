@@ -25,6 +25,7 @@ add_compile_definitions(
 # ここで指定したディレクトリは、このプロジェクトのすべてのターゲットに適用されます
 include_directories(
     external
+    external/stb
     external/imgui
     external/tinygltf
     external/ktx/include
@@ -36,8 +37,6 @@ include_directories(
 # 'base'サブディレクトリを追加 (baseライブラリがビルドされる)
 add_subdirectory(base)
 
-# stbライブラリをINTERFACEライブラリとして定義 (主にヘッダーオンリーライブラリで使用)
-add_library(stb INTERFACE)
 
 # --- 実行可能ターゲットの定義 ---
 # 'Triangle.cpp'をソースとする'triangle_app'という名前の実行可能ファイルを定義
@@ -60,7 +59,6 @@ foreach(APP ${ALL_APPS})
     # 共通のライブラリをターゲットにリンク
     target_link_libraries(${APP} PRIVATE
         base
-        stb
         ${Vulkan_LIBRARIES}
         glfw
         glm::glm
