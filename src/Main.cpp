@@ -1,9 +1,9 @@
-/*
-* Vulkan ƒTƒ“ƒvƒ‹ - wŒü«ŒõŒ¹‚ÌƒVƒƒƒhƒEƒ}ƒbƒsƒ“ƒO
+ï»¿/*
+* Vulkan ã‚µãƒ³ãƒ—ãƒ« - æŒ‡å‘æ€§å…‰æºã®ã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ”ãƒ³ã‚°
 *
 * Copyright (C) 2016-2023 by Sascha Willems - www.saschawillems.de
 *
-* ‚±‚ÌƒR[ƒh‚Í MIT ƒ‰ƒCƒZƒ“ƒX (MIT) (http://opensource.org/licenses/MIT) ‚Ì‰º‚Åƒ‰ƒCƒZƒ“ƒX‚³‚ê‚Ä‚¢‚Ü‚·B
+* ã“ã®ã‚³ãƒ¼ãƒ‰ã¯ MIT ãƒ©ã‚¤ã‚»ãƒ³ã‚¹ (MIT) (http://opensource.org/licenses/MIT) ã®ä¸‹ã§ãƒ©ã‚¤ã‚»ãƒ³ã‚¹ã•ã‚Œã¦ã„ã¾ã™ã€‚
 */
 
 #include "vulkanexamplebase.h"
@@ -15,15 +15,15 @@ public:
 	bool displayShadowMap = false;
 	bool filterPCF = true;
 
-	// [“x”ÍˆÍ‚ğ‰Â”\‚ÈŒÀ‚è¬‚³‚­•Û‚Â
-	// ‚±‚ê‚É‚æ‚èƒVƒƒƒhƒEƒ}ƒbƒv‚Ì¸“x‚ªŒüã‚·‚é
+	// æ·±åº¦ç¯„å›²ã‚’å¯èƒ½ãªé™ã‚Šå°ã•ãä¿ã¤
+	// ã“ã‚Œã«ã‚ˆã‚Šã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ—ã®ç²¾åº¦ãŒå‘ä¸Šã™ã‚‹
 	float zNear = 1.0f;
 	float zFar = 96.0f;
 
-	// [“xƒoƒCƒAƒXi‚¨‚æ‚ÑƒXƒ[ƒvj‚ÍƒVƒƒƒhƒEƒCƒ“ƒO‚ÌƒA[ƒeƒBƒtƒ@ƒNƒg‚ğ”ğ‚¯‚é‚½‚ß‚Ég—p‚³‚ê‚é
-	// ’è”[“xƒoƒCƒAƒXŒW”ií‚É“K—p‚³‚ê‚éj
+	// æ·±åº¦ãƒã‚¤ã‚¢ã‚¹ï¼ˆãŠã‚ˆã³ã‚¹ãƒ­ãƒ¼ãƒ—ï¼‰ã¯ã‚·ãƒ£ãƒ‰ã‚¦ã‚¤ãƒ³ã‚°ã®ã‚¢ãƒ¼ãƒ†ã‚£ãƒ•ã‚¡ã‚¯ãƒˆã‚’é¿ã‘ã‚‹ãŸã‚ã«ä½¿ç”¨ã•ã‚Œã‚‹
+	// å®šæ•°æ·±åº¦ãƒã‚¤ã‚¢ã‚¹ä¿‚æ•°ï¼ˆå¸¸ã«é©ç”¨ã•ã‚Œã‚‹ï¼‰
 	float depthBiasConstant = 1.25f;
-	// ƒXƒ[ƒv[“xƒoƒCƒAƒXŒW”Aƒ|ƒŠƒSƒ“‚ÌŒXÎ‚É‰‚¶‚Ä“K—p‚³‚ê‚é
+	// ã‚¹ãƒ­ãƒ¼ãƒ—æ·±åº¦ãƒã‚¤ã‚¢ã‚¹ä¿‚æ•°ã€ãƒãƒªã‚´ãƒ³ã®å‚¾æ–œã«å¿œã˜ã¦é©ç”¨ã•ã‚Œã‚‹
 	float depthBiasSlope = 1.75f;
 
 	glm::vec3 lightPos = glm::vec3();
@@ -39,7 +39,7 @@ public:
 		glm::mat4 model;
 		glm::mat4 depthBiasMVP;
 		glm::vec4 lightPos;
-		// [“xƒ}ƒbƒv‚Ì‹Šo‰»‚Ég—p
+		// æ·±åº¦ãƒãƒƒãƒ—ã®è¦–è¦šåŒ–ã«ä½¿ç”¨
 		float zNear;
 		float zFar;
 	} uniformDataScene;
@@ -56,7 +56,7 @@ public:
 	struct {
 		VkPipeline offscreen{ VK_NULL_HANDLE };
 		VkPipeline sceneShadow{ VK_NULL_HANDLE };
-		// ƒVƒƒƒhƒEƒ}ƒbƒv‚Ìƒp[ƒZƒ“ƒe[ƒWƒNƒ[ƒT[ƒtƒBƒ‹ƒ^ƒŠƒ“ƒOiPCFj•t‚«ƒpƒCƒvƒ‰ƒCƒ“
+		// ã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ—ã®ãƒ‘ãƒ¼ã‚»ãƒ³ãƒ†ãƒ¼ã‚¸ã‚¯ãƒ­ãƒ¼ã‚µãƒ¼ãƒ•ã‚£ãƒ«ã‚¿ãƒªãƒ³ã‚°ï¼ˆPCFï¼‰ä»˜ããƒ‘ã‚¤ãƒ—ãƒ©ã‚¤ãƒ³
 		VkPipeline sceneShadowPCF{ VK_NULL_HANDLE };
 		VkPipeline debug{ VK_NULL_HANDLE };
 	} pipelines;
@@ -69,7 +69,7 @@ public:
 	} descriptorSets;
 	VkDescriptorSetLayout descriptorSetLayout{ VK_NULL_HANDLE };
 
-	// ƒIƒtƒXƒNƒŠ[ƒ“ƒŒƒ“ƒ_ƒŠƒ“ƒO—p‚ÌƒtƒŒ[ƒ€ƒoƒbƒtƒ@
+	// ã‚ªãƒ•ã‚¹ã‚¯ãƒªãƒ¼ãƒ³ãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°ç”¨ã®ãƒ•ãƒ¬ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡
 	struct FrameBufferAttachment {
 		VkImage image;
 		VkDeviceMemory mem;
@@ -84,11 +84,11 @@ public:
 		VkDescriptorImageInfo descriptor;
 	} offscreenPass{};
 
-	// ‚±‚Ì‚æ‚¤‚È¬‚³‚ÈƒV[ƒ“‚É‚Í16ƒrƒbƒg‚Ì[“x‚Å\•ª
+	// ã“ã®ã‚ˆã†ãªå°ã•ãªã‚·ãƒ¼ãƒ³ã«ã¯16ãƒ“ãƒƒãƒˆã®æ·±åº¦ã§ååˆ†
 	const VkFormat offscreenDepthFormat{ VK_FORMAT_D16_UNORM };
-	// ƒVƒƒƒhƒEƒ}ƒbƒv‚Ì‰ğ‘œ“x
+	// ã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ—ã®è§£åƒåº¦
 #if defined(__ANDROID__)
-	// ƒpƒtƒH[ƒ}ƒ“ƒXã‚Ì——R‚©‚çAndroid‚Å‚Í‚æ‚è¬‚³‚¢ƒTƒCƒY‚ğg—p‚·‚é
+	// ãƒ‘ãƒ•ã‚©ãƒ¼ãƒãƒ³ã‚¹ä¸Šã®ç†ç”±ã‹ã‚‰Androidã§ã¯ã‚ˆã‚Šå°ã•ã„ã‚µã‚¤ã‚ºã‚’ä½¿ç”¨ã™ã‚‹
 	const uint32_t shadowMapize{ 1024 };
 #else
 	const uint32_t shadowMapize{ 2048 };
@@ -107,10 +107,10 @@ public:
 	~VulkanExample()
 	{
 		if (device) {
-			// ƒtƒŒ[ƒ€ƒoƒbƒtƒ@
+			// ãƒ•ãƒ¬ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡
 			vkDestroySampler(device, offscreenPass.depthSampler, nullptr);
 
-			// [“xƒAƒ^ƒbƒ`ƒƒ“ƒg
+			// æ·±åº¦ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆ
 			vkDestroyImageView(device, offscreenPass.depth.view, nullptr);
 			vkDestroyImage(device, offscreenPass.depth.image, nullptr);
 			vkFreeMemory(device, offscreenPass.depth.mem, nullptr);
@@ -128,36 +128,36 @@ public:
 
 			vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
-			// ƒ†ƒjƒtƒH[ƒ€ƒoƒbƒtƒ@
+			// ãƒ¦ãƒ‹ãƒ•ã‚©ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡
 			uniformBuffers.offscreen.destroy();
 			uniformBuffers.scene.destroy();
 		}
 	}
 
-	// ƒIƒtƒXƒNƒŠ[ƒ“ƒtƒŒ[ƒ€ƒoƒbƒtƒ@—p‚É•Ê‚ÌƒŒƒ“ƒ_[ƒpƒX‚ğİ’è‚·‚é
-	// ‚±‚ê‚ÍAƒIƒtƒXƒNƒŠ[ƒ“ƒtƒŒ[ƒ€ƒoƒbƒtƒ@‚ÌƒAƒ^ƒbƒ`ƒƒ“ƒg‚ªƒTƒ“ƒvƒ‹‚ÌƒŒƒ“ƒ_[ƒpƒX‚Æ‚ÍˆÙ‚È‚éƒtƒH[ƒ}ƒbƒg‚ğg—p‚·‚é‚½‚ß‚É•K—v
+	// ã‚ªãƒ•ã‚¹ã‚¯ãƒªãƒ¼ãƒ³ãƒ•ãƒ¬ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡ç”¨ã«åˆ¥ã®ãƒ¬ãƒ³ãƒ€ãƒ¼ãƒ‘ã‚¹ã‚’è¨­å®šã™ã‚‹
+	// ã“ã‚Œã¯ã€ã‚ªãƒ•ã‚¹ã‚¯ãƒªãƒ¼ãƒ³ãƒ•ãƒ¬ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡ã®ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆãŒã‚µãƒ³ãƒ—ãƒ«ã®ãƒ¬ãƒ³ãƒ€ãƒ¼ãƒ‘ã‚¹ã¨ã¯ç•°ãªã‚‹ãƒ•ã‚©ãƒ¼ãƒãƒƒãƒˆã‚’ä½¿ç”¨ã™ã‚‹ãŸã‚ã«å¿…è¦
 	void prepareOffscreenRenderpass()
 	{
 		VkAttachmentDescription attachmentDescription{};
 		attachmentDescription.format = offscreenDepthFormat;
 		attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
-		attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;							// ƒŒƒ“ƒ_[ƒpƒX‚ÌŠJn‚É[“x‚ğƒNƒŠƒA‚·‚é
-		attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;						// [“x‚©‚ç“Ç‚İæ‚é‚½‚ßA[“xƒAƒ^ƒbƒ`ƒƒ“ƒg‚ÌŒ‹‰Ê‚ğƒXƒgƒA‚·‚é‚±‚Æ‚ªd—v
+		attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;							// ãƒ¬ãƒ³ãƒ€ãƒ¼ãƒ‘ã‚¹ã®é–‹å§‹æ™‚ã«æ·±åº¦ã‚’ã‚¯ãƒªã‚¢ã™ã‚‹
+		attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;						// æ·±åº¦ã‹ã‚‰èª­ã¿å–ã‚‹ãŸã‚ã€æ·±åº¦ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆã®çµæœã‚’ã‚¹ãƒˆã‚¢ã™ã‚‹ã“ã¨ãŒé‡è¦
 		attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 		attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;					// ƒAƒ^ƒbƒ`ƒƒ“ƒg‚Ì‰ŠúƒŒƒCƒAƒEƒg‚Í–â‚í‚È‚¢
-		attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;// ƒŒƒ“ƒ_[ƒpƒX‚ÌI‚í‚è‚ÉƒAƒ^ƒbƒ`ƒƒ“ƒg‚ÍƒVƒF[ƒ_[“Ç‚İæ‚è—p‚É‘JˆÚ‚³‚ê‚é
+		attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;					// ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆã®åˆæœŸãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆã¯å•ã‚ãªã„
+		attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;// ãƒ¬ãƒ³ãƒ€ãƒ¼ãƒ‘ã‚¹ã®çµ‚ã‚ã‚Šã«ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆã¯ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼èª­ã¿å–ã‚Šç”¨ã«é·ç§»ã•ã‚Œã‚‹
 
 		VkAttachmentReference depthReference = {};
 		depthReference.attachment = 0;
-		depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;			// ƒŒƒ“ƒ_[ƒpƒX’†AƒAƒ^ƒbƒ`ƒƒ“ƒg‚Í[“x/ƒXƒeƒ“ƒVƒ‹‚Æ‚µ‚Äg—p‚³‚ê‚é
+		depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;			// ãƒ¬ãƒ³ãƒ€ãƒ¼ãƒ‘ã‚¹ä¸­ã€ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆã¯æ·±åº¦/ã‚¹ãƒ†ãƒ³ã‚·ãƒ«ã¨ã—ã¦ä½¿ç”¨ã•ã‚Œã‚‹
 
 		VkSubpassDescription subpass = {};
 		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpass.colorAttachmentCount = 0;													// ƒJƒ‰[ƒAƒ^ƒbƒ`ƒƒ“ƒg‚È‚µ
-		subpass.pDepthStencilAttachment = &depthReference;									// [“xƒAƒ^ƒbƒ`ƒƒ“ƒg‚Ö‚ÌQÆ
+		subpass.colorAttachmentCount = 0;													// ã‚«ãƒ©ãƒ¼ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆãªã—
+		subpass.pDepthStencilAttachment = &depthReference;									// æ·±åº¦ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆã¸ã®å‚ç…§
 
-		// ƒŒƒCƒAƒEƒg‘JˆÚ‚ÉƒTƒuƒpƒXˆË‘¶ŠÖŒW‚ğg—p‚·‚é
+		// ãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆé·ç§»ã«ã‚µãƒ–ãƒ‘ã‚¹ä¾å­˜é–¢ä¿‚ã‚’ä½¿ç”¨ã™ã‚‹
 		std::array<VkSubpassDependency, 2> dependencies;
 
 		dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -187,14 +187,14 @@ public:
 		VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &offscreenPass.renderPass));
 	}
 
-	// ŒõŒ¹‚Ì‹“_‚©‚çƒV[ƒ“‚ğƒŒƒ“ƒ_ƒŠƒ“ƒO‚·‚é‚½‚ß‚ÌƒIƒtƒXƒNƒŠ[ƒ“ƒtƒŒ[ƒ€ƒoƒbƒtƒ@‚ğƒZƒbƒgƒAƒbƒv‚·‚é
-	// ‚±‚ÌƒtƒŒ[ƒ€ƒoƒbƒtƒ@‚Ì[“xƒAƒ^ƒbƒ`ƒƒ“ƒg‚ÍAƒVƒƒƒhƒEƒCƒ“ƒOƒpƒX‚Ìƒtƒ‰ƒOƒƒ“ƒgƒVƒF[ƒ_‚ÅƒTƒ“ƒvƒŠƒ“ƒO‚·‚é‚½‚ß‚Ég—p‚³‚ê‚é
+	// å…‰æºã®è¦–ç‚¹ã‹ã‚‰ã‚·ãƒ¼ãƒ³ã‚’ãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°ã™ã‚‹ãŸã‚ã®ã‚ªãƒ•ã‚¹ã‚¯ãƒªãƒ¼ãƒ³ãƒ•ãƒ¬ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡ã‚’ã‚»ãƒƒãƒˆã‚¢ãƒƒãƒ—ã™ã‚‹
+	// ã“ã®ãƒ•ãƒ¬ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡ã®æ·±åº¦ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆã¯ã€ã‚·ãƒ£ãƒ‰ã‚¦ã‚¤ãƒ³ã‚°ãƒ‘ã‚¹ã®ãƒ•ãƒ©ã‚°ãƒ¡ãƒ³ãƒˆã‚·ã‚§ãƒ¼ãƒ€ã§ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°ã™ã‚‹ãŸã‚ã«ä½¿ç”¨ã•ã‚Œã‚‹
 	void prepareOffscreenFramebuffer()
 	{
 		offscreenPass.width = shadowMapize;
 		offscreenPass.height = shadowMapize;
 
-		// ƒVƒƒƒhƒEƒ}ƒbƒsƒ“ƒO‚É‚Í[“xƒAƒ^ƒbƒ`ƒƒ“ƒg‚Ì‚İ‚ª•K—v
+		// ã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ”ãƒ³ã‚°ã«ã¯æ·±åº¦ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆã®ã¿ãŒå¿…è¦
 		VkImageCreateInfo image = vks::initializers::imageCreateInfo();
 		image.imageType = VK_IMAGE_TYPE_2D;
 		image.extent.width = offscreenPass.width;
@@ -204,8 +204,8 @@ public:
 		image.arrayLayers = 1;
 		image.samples = VK_SAMPLE_COUNT_1_BIT;
 		image.tiling = VK_IMAGE_TILING_OPTIMAL;
-		image.format = offscreenDepthFormat;																// [“xƒXƒeƒ“ƒVƒ‹ƒAƒ^ƒbƒ`ƒƒ“ƒg
-		image.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;		// ƒVƒƒƒhƒEƒ}ƒbƒsƒ“ƒO‚Ì‚½‚ß‚É[“xƒAƒ^ƒbƒ`ƒƒ“ƒg‚©‚ç’¼ÚƒTƒ“ƒvƒŠƒ“ƒO‚·‚é
+		image.format = offscreenDepthFormat;																// æ·±åº¦ã‚¹ãƒ†ãƒ³ã‚·ãƒ«ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆ
+		image.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;		// ã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ”ãƒ³ã‚°ã®ãŸã‚ã«æ·±åº¦ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆã‹ã‚‰ç›´æ¥ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°ã™ã‚‹
 		VK_CHECK_RESULT(vkCreateImage(device, &image, nullptr, &offscreenPass.depth.image));
 
 		VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
@@ -228,8 +228,8 @@ public:
 		depthStencilView.image = offscreenPass.depth.image;
 		VK_CHECK_RESULT(vkCreateImageView(device, &depthStencilView, nullptr, &offscreenPass.depth.view));
 
-		// [“xƒAƒ^ƒbƒ`ƒƒ“ƒg‚©‚çƒTƒ“ƒvƒŠƒ“ƒO‚·‚é‚½‚ß‚ÌƒTƒ“ƒvƒ‰[‚ğì¬
-		// ‰e•t‚«ƒŒƒ“ƒ_ƒŠƒ“ƒO‚Ìƒtƒ‰ƒOƒƒ“ƒgƒVƒF[ƒ_‚ÅƒTƒ“ƒvƒŠƒ“ƒO‚·‚é‚½‚ß‚Ég—p
+		// æ·±åº¦ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆã‹ã‚‰ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°ã™ã‚‹ãŸã‚ã®ã‚µãƒ³ãƒ—ãƒ©ãƒ¼ã‚’ä½œæˆ
+		// å½±ä»˜ããƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°ã®ãƒ•ãƒ©ã‚°ãƒ¡ãƒ³ãƒˆã‚·ã‚§ãƒ¼ãƒ€ã§ã‚µãƒ³ãƒ—ãƒªãƒ³ã‚°ã™ã‚‹ãŸã‚ã«ä½¿ç”¨
 		VkFilter shadowmap_filter = vks::tools::formatIsFilterable(physicalDevice, offscreenDepthFormat, VK_IMAGE_TILING_OPTIMAL) ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
 		VkSamplerCreateInfo sampler = vks::initializers::samplerCreateInfo();
 		sampler.magFilter = shadowmap_filter;
@@ -247,7 +247,7 @@ public:
 
 		prepareOffscreenRenderpass();
 
-		// ƒtƒŒ[ƒ€ƒoƒbƒtƒ@‚ğì¬
+		// ãƒ•ãƒ¬ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡ã‚’ä½œæˆ
 		VkFramebufferCreateInfo fbufCreateInfo = vks::initializers::framebufferCreateInfo();
 		fbufCreateInfo.renderPass = offscreenPass.renderPass;
 		fbufCreateInfo.attachmentCount = 1;
@@ -272,7 +272,7 @@ public:
 			VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers[i], &cmdBufInfo));
 
 			/*
-				Å‰‚ÌƒŒƒ“ƒ_[ƒpƒXFŒõŒ¹‚Ì‹“_‚©‚çƒV[ƒ“‚ğƒŒƒ“ƒ_ƒŠƒ“ƒO‚µ‚ÄƒVƒƒƒhƒEƒ}ƒbƒv‚ğ¶¬‚·‚é
+				æœ€åˆã®ãƒ¬ãƒ³ãƒ€ãƒ¼ãƒ‘ã‚¹ï¼šå…‰æºã®è¦–ç‚¹ã‹ã‚‰ã‚·ãƒ¼ãƒ³ã‚’ãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°ã—ã¦ã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ—ã‚’ç”Ÿæˆã™ã‚‹
 			*/
 			{
 				clearValues[0].depthStencil = { 1.0f, 0 };
@@ -293,8 +293,8 @@ public:
 				scissor = vks::initializers::rect2D(offscreenPass.width, offscreenPass.height, 0, 0);
 				vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
 
-				// [“xƒoƒCƒAƒXi•Ê–¼uƒ|ƒŠƒSƒ“ƒIƒtƒZƒbƒgvj‚ğİ’è
-				// ƒVƒƒƒhƒEƒ}ƒbƒsƒ“ƒO‚ÌƒA[ƒeƒBƒtƒ@ƒNƒg‚ğ”ğ‚¯‚é‚½‚ß‚É•K—v
+				// æ·±åº¦ãƒã‚¤ã‚¢ã‚¹ï¼ˆåˆ¥åã€Œãƒãƒªã‚´ãƒ³ã‚ªãƒ•ã‚»ãƒƒãƒˆã€ï¼‰ã‚’è¨­å®š
+				// ã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ”ãƒ³ã‚°ã®ã‚¢ãƒ¼ãƒ†ã‚£ãƒ•ã‚¡ã‚¯ãƒˆã‚’é¿ã‘ã‚‹ãŸã‚ã«å¿…è¦
 				vkCmdSetDepthBias(
 					drawCmdBuffers[i],
 					depthBiasConstant,
@@ -309,11 +309,11 @@ public:
 			}
 
 			/*
-				’ˆÓFƒŒƒ“ƒ_[ƒpƒXŠÔ‚Ì–¾¦“I‚È“¯Šú‚Í•s—vB‚±‚ê‚ÍƒTƒuƒpƒX‚ÌˆË‘¶ŠÖŒW‚É‚æ‚Á‚ÄˆÃ–Ù“I‚És‚í‚ê‚é‚½‚ß
+				æ³¨æ„ï¼šãƒ¬ãƒ³ãƒ€ãƒ¼ãƒ‘ã‚¹é–“ã®æ˜ç¤ºçš„ãªåŒæœŸã¯ä¸è¦ã€‚ã“ã‚Œã¯ã‚µãƒ–ãƒ‘ã‚¹ã®ä¾å­˜é–¢ä¿‚ã«ã‚ˆã£ã¦æš—é»™çš„ã«è¡Œã‚ã‚Œã‚‹ãŸã‚
 			*/
 
 			/*
-				2”Ô–Ú‚ÌƒpƒXFƒVƒƒƒhƒEƒ}ƒbƒv‚ğ“K—p‚µ‚½ƒV[ƒ“‚ÌƒŒƒ“ƒ_ƒŠƒ“ƒO
+				2ç•ªç›®ã®ãƒ‘ã‚¹ï¼šã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ—ã‚’é©ç”¨ã—ãŸã‚·ãƒ¼ãƒ³ã®ãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°
 			*/
 
 			{
@@ -336,14 +336,14 @@ public:
 				scissor = vks::initializers::rect2D(width, height, 0, 0);
 				vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
 
-				// ƒVƒƒƒhƒEƒ}ƒbƒv‚ğ‹Šo‰»
+				// ã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ—ã‚’è¦–è¦šåŒ–
 				if (displayShadowMap) {
 					vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.debug, 0, nullptr);
 					vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.debug);
 					vkCmdDraw(drawCmdBuffers[i], 3, 1, 0, 0);
 				}
 				else {
-					// ‰e‚Ì‚ ‚éƒV[ƒ“‚ğƒŒƒ“ƒ_ƒŠƒ“ƒO
+					// å½±ã®ã‚ã‚‹ã‚·ãƒ¼ãƒ³ã‚’ãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°
 					vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets.scene, 0, nullptr);
 					vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (filterPCF) ? pipelines.sceneShadowPCF : pipelines.sceneShadow);
 					scenes[sceneIndex].draw(drawCmdBuffers[i]);
@@ -369,7 +369,7 @@ public:
 
 	void setupDescriptors()
 	{
-		// ƒv[ƒ‹
+		// ãƒ—ãƒ¼ãƒ«
 		std::vector<VkDescriptorPoolSize> poolSizes = {
 			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3),
 			vks::initializers::descriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3)
@@ -377,51 +377,51 @@ public:
 		VkDescriptorPoolCreateInfo descriptorPoolInfo = vks::initializers::descriptorPoolCreateInfo(poolSizes, 3);
 		VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool));
 
-		// ƒŒƒCƒAƒEƒg
+		// ãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆ
 		std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-			// ƒoƒCƒ“ƒfƒBƒ“ƒO 0F’¸“_ƒVƒF[ƒ_[‚Ìƒ†ƒjƒtƒH[ƒ€ƒoƒbƒtƒ@
+			// ãƒã‚¤ãƒ³ãƒ‡ã‚£ãƒ³ã‚° 0ï¼šé ‚ç‚¹ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã®ãƒ¦ãƒ‹ãƒ•ã‚©ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡
 			vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0),
-			// ƒoƒCƒ“ƒfƒBƒ“ƒO 1Fƒtƒ‰ƒOƒƒ“ƒgƒVƒF[ƒ_[‚ÌƒCƒ[ƒWƒTƒ“ƒvƒ‰[iƒVƒƒƒhƒEƒ}ƒbƒvj
+			// ãƒã‚¤ãƒ³ãƒ‡ã‚£ãƒ³ã‚° 1ï¼šãƒ•ãƒ©ã‚°ãƒ¡ãƒ³ãƒˆã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã®ã‚¤ãƒ¡ãƒ¼ã‚¸ã‚µãƒ³ãƒ—ãƒ©ãƒ¼ï¼ˆã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ—ï¼‰
 			vks::initializers::descriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
 		};
 		VkDescriptorSetLayoutCreateInfo descriptorLayout = vks::initializers::descriptorSetLayoutCreateInfo(setLayoutBindings);
 		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorLayout, nullptr, &descriptorSetLayout));
 
-		// ƒZƒbƒg
+		// ã‚»ãƒƒãƒˆ
 		std::vector<VkWriteDescriptorSet> writeDescriptorSets;
 
-		// ƒVƒƒƒhƒEƒ}ƒbƒvƒAƒ^ƒbƒ`ƒƒ“ƒg—p‚ÌƒCƒ[ƒWƒfƒBƒXƒNƒŠƒvƒ^
+		// ã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ—ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆç”¨ã®ã‚¤ãƒ¡ãƒ¼ã‚¸ãƒ‡ã‚£ã‚¹ã‚¯ãƒªãƒ—ã‚¿
 		VkDescriptorImageInfo shadowMapDescriptor =
 			vks::initializers::descriptorImageInfo(
 				offscreenPass.depthSampler,
 				offscreenPass.depth.view,
 				VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
 
-		// ƒfƒoƒbƒO•\¦
+		// ãƒ‡ãƒãƒƒã‚°è¡¨ç¤º
 		VkDescriptorSetAllocateInfo allocInfo = vks::initializers::descriptorSetAllocateInfo(descriptorPool, &descriptorSetLayout, 1);
 		VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSets.debug));
 		writeDescriptorSets = {
-			// ƒoƒCƒ“ƒfƒBƒ“ƒO 0Fƒpƒ‰ƒ[ƒ^‚Ìƒ†ƒjƒtƒH[ƒ€ƒoƒbƒtƒ@
+			// ãƒã‚¤ãƒ³ãƒ‡ã‚£ãƒ³ã‚° 0ï¼šãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã®ãƒ¦ãƒ‹ãƒ•ã‚©ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡
 			vks::initializers::writeDescriptorSet(descriptorSets.debug, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.scene.descriptor),
-			// ƒoƒCƒ“ƒfƒBƒ“ƒO 1Fƒtƒ‰ƒOƒƒ“ƒgƒVƒF[ƒ_[‚ÌƒeƒNƒXƒ`ƒƒƒTƒ“ƒvƒ‰[
+			// ãƒã‚¤ãƒ³ãƒ‡ã‚£ãƒ³ã‚° 1ï¼šãƒ•ãƒ©ã‚°ãƒ¡ãƒ³ãƒˆã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã®ãƒ†ã‚¯ã‚¹ãƒãƒ£ã‚µãƒ³ãƒ—ãƒ©ãƒ¼
 			vks::initializers::writeDescriptorSet(descriptorSets.debug, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &shadowMapDescriptor)
 		};
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 
-		// ƒIƒtƒXƒNƒŠ[ƒ“‚ÌƒVƒƒƒhƒEƒ}ƒbƒv¶¬
+		// ã‚ªãƒ•ã‚¹ã‚¯ãƒªãƒ¼ãƒ³ã®ã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ—ç”Ÿæˆ
 		VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSets.offscreen));
 		writeDescriptorSets = {
-			// ƒoƒCƒ“ƒfƒBƒ“ƒO 0F’¸“_ƒVƒF[ƒ_[‚Ìƒ†ƒjƒtƒH[ƒ€ƒoƒbƒtƒ@
+			// ãƒã‚¤ãƒ³ãƒ‡ã‚£ãƒ³ã‚° 0ï¼šé ‚ç‚¹ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã®ãƒ¦ãƒ‹ãƒ•ã‚©ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡
 			vks::initializers::writeDescriptorSet(descriptorSets.offscreen, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.offscreen.descriptor),
 		};
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 
-		// ƒVƒƒƒhƒEƒ}ƒbƒv‚ğ“K—p‚µ‚½ƒV[ƒ“‚ÌƒŒƒ“ƒ_ƒŠƒ“ƒO
+		// ã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ—ã‚’é©ç”¨ã—ãŸã‚·ãƒ¼ãƒ³ã®ãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°
 		VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSets.scene));
 		writeDescriptorSets = {
-			// ƒoƒCƒ“ƒfƒBƒ“ƒO 0F’¸“_ƒVƒF[ƒ_[‚Ìƒ†ƒjƒtƒH[ƒ€ƒoƒbƒtƒ@
+			// ãƒã‚¤ãƒ³ãƒ‡ã‚£ãƒ³ã‚° 0ï¼šé ‚ç‚¹ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã®ãƒ¦ãƒ‹ãƒ•ã‚©ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡
 			vks::initializers::writeDescriptorSet(descriptorSets.scene, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers.scene.descriptor),
-			// ƒoƒCƒ“ƒfƒBƒ“ƒO 1Fƒtƒ‰ƒOƒƒ“ƒgƒVƒF[ƒ_[‚ÌƒVƒƒƒhƒEƒTƒ“ƒvƒ‰[
+			// ãƒã‚¤ãƒ³ãƒ‡ã‚£ãƒ³ã‚° 1ï¼šãƒ•ãƒ©ã‚°ãƒ¡ãƒ³ãƒˆã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã®ã‚·ãƒ£ãƒ‰ã‚¦ã‚µãƒ³ãƒ—ãƒ©ãƒ¼
 			vks::initializers::writeDescriptorSet(descriptorSets.scene, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &shadowMapDescriptor)
 		};
 		vkUpdateDescriptorSets(device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
@@ -429,11 +429,11 @@ public:
 
 	void preparePipelines()
 	{
-		// ƒŒƒCƒAƒEƒg
+		// ãƒ¬ã‚¤ã‚¢ã‚¦ãƒˆ
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = vks::initializers::pipelineLayoutCreateInfo(&descriptorSetLayout, 1);
 		VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 
-		// ƒpƒCƒvƒ‰ƒCƒ“
+		// ãƒ‘ã‚¤ãƒ—ãƒ©ã‚¤ãƒ³
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCI = vks::initializers::pipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
 		VkPipelineRasterizationStateCreateInfo rasterizationStateCI = vks::initializers::pipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE, 0);
 		VkPipelineColorBlendAttachmentState blendAttachmentState = vks::initializers::pipelineColorBlendAttachmentState(0xf, VK_FALSE);
@@ -456,42 +456,42 @@ public:
 		pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
 		pipelineCI.pStages = shaderStages.data();
 
-		// ƒVƒƒƒhƒEƒ}ƒbƒsƒ“ƒO‚ÌƒfƒoƒbƒO—pƒNƒAƒbƒh•\¦
+		// ã‚·ãƒ£ãƒ‰ã‚¦ãƒãƒƒãƒ”ãƒ³ã‚°ã®ãƒ‡ãƒãƒƒã‚°ç”¨ã‚¯ã‚¢ãƒƒãƒ‰è¡¨ç¤º
 		rasterizationStateCI.cullMode = VK_CULL_MODE_NONE;
 		shaderStages[0] = loadShader(getShadersPath() + "shadowmapping/quad.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		shaderStages[1] = loadShader(getShadersPath() + "shadowmapping/quad.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-		// ‹ó‚Ì’¸“_“ü—ÍƒXƒe[ƒg
+		// ç©ºã®é ‚ç‚¹å…¥åŠ›ã‚¹ãƒ†ãƒ¼ãƒˆ
 		VkPipelineVertexInputStateCreateInfo emptyInputState = vks::initializers::pipelineVertexInputStateCreateInfo();
 		pipelineCI.pVertexInputState = &emptyInputState;
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCI, nullptr, &pipelines.debug));
 
-		// ‰e‚ğ“K—p‚µ‚½ƒV[ƒ“‚ÌƒŒƒ“ƒ_ƒŠƒ“ƒO
+		// å½±ã‚’é©ç”¨ã—ãŸã‚·ãƒ¼ãƒ³ã®ãƒ¬ãƒ³ãƒ€ãƒªãƒ³ã‚°
 		pipelineCI.pVertexInputState = vkglTF::Vertex::getPipelineVertexInputState({ vkglTF::VertexComponent::Position, vkglTF::VertexComponent::UV, vkglTF::VertexComponent::Color, vkglTF::VertexComponent::Normal });
 		rasterizationStateCI.cullMode = VK_CULL_MODE_BACK_BIT;
 		shaderStages[0] = loadShader(getShadersPath() + "shadowmapping/scene.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		shaderStages[1] = loadShader(getShadersPath() + "shadowmapping/scene.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-		// ê–å‰»’è”‚ğg—p‚µ‚ÄPCF‚Ì—LŒø/–³Œø‚ğØ‚è‘Ö‚¦‚é
+		// å°‚é–€åŒ–å®šæ•°ã‚’ä½¿ç”¨ã—ã¦PCFã®æœ‰åŠ¹/ç„¡åŠ¹ã‚’åˆ‡ã‚Šæ›¿ãˆã‚‹
 		uint32_t enablePCF = 0;
 		VkSpecializationMapEntry specializationMapEntry = vks::initializers::specializationMapEntry(0, 0, sizeof(uint32_t));
 		VkSpecializationInfo specializationInfo = vks::initializers::specializationInfo(1, &specializationMapEntry, sizeof(uint32_t), &enablePCF);
 		shaderStages[1].pSpecializationInfo = &specializationInfo;
-		// ƒtƒBƒ‹ƒ^ƒŠƒ“ƒO‚È‚µ
+		// ãƒ•ã‚£ãƒ«ã‚¿ãƒªãƒ³ã‚°ãªã—
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCI, nullptr, &pipelines.sceneShadow));
-		// PCFƒtƒBƒ‹ƒ^ƒŠƒ“ƒO
+		// PCFãƒ•ã‚£ãƒ«ã‚¿ãƒªãƒ³ã‚°
 		enablePCF = 1;
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCI, nullptr, &pipelines.sceneShadowPCF));
 
-		// ƒIƒtƒXƒNƒŠ[ƒ“ƒpƒCƒvƒ‰ƒCƒ“i’¸“_ƒVƒF[ƒ_[‚Ì‚İj
+		// ã‚ªãƒ•ã‚¹ã‚¯ãƒªãƒ¼ãƒ³ãƒ‘ã‚¤ãƒ—ãƒ©ã‚¤ãƒ³ï¼ˆé ‚ç‚¹ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã®ã¿ï¼‰
 		shaderStages[0] = loadShader(getShadersPath() + "shadowmapping/offscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 		pipelineCI.stageCount = 1;
-		// ƒuƒŒƒ“ƒhƒAƒ^ƒbƒ`ƒƒ“ƒgƒXƒe[ƒg‚È‚µiƒJƒ‰[ƒAƒ^ƒbƒ`ƒƒ“ƒg‚Íg—p‚µ‚È‚¢j
+		// ãƒ–ãƒ¬ãƒ³ãƒ‰ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆã‚¹ãƒ†ãƒ¼ãƒˆãªã—ï¼ˆã‚«ãƒ©ãƒ¼ã‚¢ã‚¿ãƒƒãƒãƒ¡ãƒ³ãƒˆã¯ä½¿ç”¨ã—ãªã„ï¼‰
 		colorBlendStateCI.attachmentCount = 0;
-		// ƒJƒŠƒ“ƒO‚ğ–³Œø‚É‚µA‚·‚×‚Ä‚Ì–Ê‚ª‰e‚ÉŠñ—^‚·‚é‚æ‚¤‚É‚·‚é
+		// ã‚«ãƒªãƒ³ã‚°ã‚’ç„¡åŠ¹ã«ã—ã€ã™ã¹ã¦ã®é¢ãŒå½±ã«å¯„ä¸ã™ã‚‹ã‚ˆã†ã«ã™ã‚‹
 		rasterizationStateCI.cullMode = VK_CULL_MODE_NONE;
 		depthStencilStateCI.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-		// [“xƒoƒCƒAƒX‚ğ—LŒø‰»
+		// æ·±åº¦ãƒã‚¤ã‚¢ã‚¹ã‚’æœ‰åŠ¹åŒ–
 		rasterizationStateCI.depthBiasEnable = VK_TRUE;
-		// Às‚É•ÏX‚Å‚«‚é‚æ‚¤A“®“IƒXƒe[ƒg‚É[“xƒoƒCƒAƒX‚ğ’Ç‰Á
+		// å®Ÿè¡Œæ™‚ã«å¤‰æ›´ã§ãã‚‹ã‚ˆã†ã€å‹•çš„ã‚¹ãƒ†ãƒ¼ãƒˆã«æ·±åº¦ãƒã‚¤ã‚¢ã‚¹ã‚’è¿½åŠ 
 		dynamicStateEnables.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
 		dynamicStateCI = vks::initializers::pipelineDynamicStateCreateInfo(dynamicStateEnables);
 
@@ -499,14 +499,14 @@ public:
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCI, nullptr, &pipelines.offscreen));
 	}
 
-	// ƒVƒF[ƒ_[ƒ†ƒjƒtƒH[ƒ€‚ğŠÜ‚Şƒ†ƒjƒtƒH[ƒ€ƒoƒbƒtƒ@‚ğ€”õE‰Šú‰»‚·‚é
+	// ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ãƒ¦ãƒ‹ãƒ•ã‚©ãƒ¼ãƒ ã‚’å«ã‚€ãƒ¦ãƒ‹ãƒ•ã‚©ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡ã‚’æº–å‚™ãƒ»åˆæœŸåŒ–ã™ã‚‹
 	void prepareUniformBuffers()
 	{
-		// ƒIƒtƒXƒNƒŠ[ƒ“—p’¸“_ƒVƒF[ƒ_[‚Ìƒ†ƒjƒtƒH[ƒ€ƒoƒbƒtƒ@ƒuƒƒbƒN
+		// ã‚ªãƒ•ã‚¹ã‚¯ãƒªãƒ¼ãƒ³ç”¨é ‚ç‚¹ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã®ãƒ¦ãƒ‹ãƒ•ã‚©ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡ãƒ–ãƒ­ãƒƒã‚¯
 		VK_CHECK_RESULT(vulkanDevice->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniformBuffers.offscreen, sizeof(UniformDataOffscreen)));
-		// ƒV[ƒ“—p’¸“_ƒVƒF[ƒ_[‚Ìƒ†ƒjƒtƒH[ƒ€ƒoƒbƒtƒ@ƒuƒƒbƒN
+		// ã‚·ãƒ¼ãƒ³ç”¨é ‚ç‚¹ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã®ãƒ¦ãƒ‹ãƒ•ã‚©ãƒ¼ãƒ ãƒãƒƒãƒ•ã‚¡ãƒ–ãƒ­ãƒƒã‚¯
 		VK_CHECK_RESULT(vulkanDevice->createBuffer(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniformBuffers.scene, sizeof(UniformDataScene)));
-		// ‰i‘±“I‚Éƒ}ƒbƒv‚·‚é
+		// æ°¸ç¶šçš„ã«ãƒãƒƒãƒ—ã™ã‚‹
 		VK_CHECK_RESULT(uniformBuffers.offscreen.map());
 		VK_CHECK_RESULT(uniformBuffers.scene.map());
 
@@ -517,7 +517,7 @@ public:
 
 	void updateLight()
 	{
-		// ŒõŒ¹‚ğƒAƒjƒ[ƒVƒ‡ƒ“‚³‚¹‚é
+		// å…‰æºã‚’ã‚¢ãƒ‹ãƒ¡ãƒ¼ã‚·ãƒ§ãƒ³ã•ã›ã‚‹
 		lightPos.x = cos(glm::radians(timer * 360.0f)) * 40.0f;
 		lightPos.y = -50.0f + sin(glm::radians(timer * 360.0f)) * 20.0f;
 		lightPos.z = 25.0f + sin(glm::radians(timer * 360.0f)) * 5.0f;
@@ -537,7 +537,7 @@ public:
 
 	void updateUniformBufferOffscreen()
 	{
-		// ŒõŒ¹‚Ì‹“_‚©‚ç‚Ìs—ñ
+		// å…‰æºã®è¦–ç‚¹ã‹ã‚‰ã®è¡Œåˆ—
 		glm::mat4 depthProjectionMatrix = glm::perspective(glm::radians(lightFOV), 1.0f, zNear, zFar);
 		glm::mat4 depthViewMatrix = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0, 1, 0));
 		glm::mat4 depthModelMatrix = glm::mat4(1.0f);

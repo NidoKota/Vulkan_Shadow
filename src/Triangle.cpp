@@ -1,13 +1,13 @@
-/*
-* Vulkan�T���v�� - ��{�I�ȃC���f�b�N�X�t���O�p�`�̃����_�����O
+﻿/*
+* Vulkanサンプル - 基本的なインデックス付き三角形のレンダリング
 *
-* ���ӁF
-*	�����Vulkan�𗧂��グ�ĉ�����\��������@���������߂́A����΁u�x�^���݁v�̃T���v���ł��B
-*	���̃T���v���Ƃ͑ΏƓI�ɁA���̃T���v���ł́i�X���b�v�`�F�[���̃Z�b�g�A�b�v�Ȃǂ������j�w���p�[�֐��⏉�����q�͎g�p���܂���B
+* 注意：
+*	これはVulkanを立ち上げて何かを表示する方法を示すための、いわば「ベタ踏み」のサンプルです。
+*	他のサンプルとは対照的に、このサンプルでは（スワップチェーンのセットアップなどを除き）ヘルパー関数や初期化子は使用しません。
 *
 * Copyright (C) 2016-2023 by Sascha Willems - www.saschawillems.de
 *
-* ���̃R�[�h��MIT���C�Z���X�iMIT�j(http://opensource.org/licenses/MIT)�̉��Ń��C�Z���X����Ă��܂��B
+* このコードはMITライセンス（MIT）(http://opensource.org/licenses/MIT)の下でライセンスされています。
 */
 
 #include <stdio.h>
@@ -26,47 +26,47 @@
 #include <vulkan/vulkan.h>
 #include "../base/vulkanexamplebase.h"
 
-// GPU��CPU����Ƀr�W�[��Ԃɕۂ������B���̂��߂ɁA�O�̃R�}���h�o�b�t�@���܂����s���ł����Ă��A�V�����R�}���h�o�b�t�@�̍\�z���J�n���邱�Ƃ�����܂��B
-// ���̐��́A�����ɏ����ł���t���[���̍ő吔���`���܂��B
-// ���̐��𑝂₷�ƃp�t�H�[�}���X�����シ��\��������܂����A�ǉ��̒x�����������܂��B
+// GPUとCPUを常にビジー状態に保ちたい。そのために、前のコマンドバッファがまだ実行中であっても、新しいコマンドバッファの構築を開始することがあります。
+// この数は、同時に処理できるフレームの最大数を定義します。
+// この数を増やすとパフォーマンスが向上する可能性がありますが、追加の遅延も発生します。
 #define MAX_CONCURRENT_FRAMES 2
 
 class VulkanExample : public VulkanExampleBase
 {
 public:
-	// ���̃T���v���Ŏg�p����钸�_���C�A�E�g
+	// このサンプルで使用される頂点レイアウト
 	struct Vertex {
 		float position[3];
 		float color[3];
 	};
 
-	// ���_�o�b�t�@�Ƒ���
+	// 頂点バッファと属性
 	struct {
-		VkDeviceMemory memory{ VK_NULL_HANDLE }; // ���̃o�b�t�@�̂��߂̃f�o�C�X�������ւ̃n���h��
-		VkBuffer buffer;						 // ���������o�C���h����Ă���Vulkan�o�b�t�@�I�u�W�F�N�g�ւ̃n���h��
+		VkDeviceMemory memory{ VK_NULL_HANDLE }; // このバッファのためのデバイスメモリへのハンドル
+		VkBuffer buffer;						 // メモリがバインドされているVulkanバッファオブジェクトへのハンドル
 	} vertices;
 
-	// �C���f�b�N�X�o�b�t�@
+	// インデックスバッファ
 	struct {
 		VkDeviceMemory memory{ VK_NULL_HANDLE };
 		VkBuffer buffer;
 		uint32_t count{ 0 };
 	} indices;
 
-	// ���j�t�H�[���o�b�t�@�u���b�N�I�u�W�F�N�g
+	// ユニフォームバッファブロックオブジェクト
 	struct UniformBuffer {
 		VkDeviceMemory memory;
 		VkBuffer buffer;
-		// �f�B�X�N���v�^�Z�b�g�́A�V�F�[�_�[�̃o�C���f�B���O�|�C���g�Ƀo�C���h���ꂽ���\�[�X���i�[���܂��B
-		// ����́A�قȂ�V�F�[�_�[�̃o�C���f�B���O�|�C���g���A�����̃o�C���f�B���O�Ɏg�p�����o�b�t�@��C���[�W�ɐڑ����܂��B
+		// ディスクリプタセットは、シェーダーのバインディングポイントにバインドされたリソースを格納します。
+		// これは、異なるシェーダーのバインディングポイントを、それらのバインディングに使用されるバッファやイメージに接続します。
 		VkDescriptorSet descriptorSet;
-		// �}�b�v���ꂽ�o�b�t�@�ւ̃|�C���^��ێ����Ă������ƂŁAmemcpy����Ă��̓��e���ȒP�ɍX�V�ł��܂��B
+		// マップされたバッファへのポインタを保持しておくことで、memcpyを介してその内容を簡単に更新できます。
 		uint8_t* mapped{ nullptr };
 	};
-	// �t���[�����Ƃ�1��UBO���g�p���邱�ƂŁA�t���[���̃I�[�o�[���b�v���\�ɂ��A���j�t�H�[�����܂��g�p���ɍX�V����Ȃ��悤�ɂ��܂��B
+	// フレームごとに1つのUBOを使用することで、フレームのオーバーラップを可能にし、ユニフォームがまだ使用中に更新されないようにします。
 	std::array<UniformBuffer, MAX_CONCURRENT_FRAMES> uniformBuffers;
 
-	// �ȒP�ɂ��邽�߂ɁA�V�F�[�_�[�Ɠ������j�t�H�[���u���b�N���C�A�E�g���g�p���܂��F
+	// 簡単にするために、シェーダーと同じユニフォームブロックレイアウトを使用します：
 	//
 	//	layout(set = 0, binding = 0) uniform UBO
 	//	{
@@ -75,33 +75,33 @@ public:
 	//		mat4 viewMatrix;
 	//	} ubo;
 	//
-	// ���̂悤�ɂ��邱�ƂŁAubo�f�[�^�����̂܂�ubo��memcpy�ł��܂��B
-	// ���ӁF�蓮�ł̃p�f�B���O������邽�߂ɁAGPU�ƃA���C�����g�������f�[�^�^�ivec4, mat4�j���g�p����K�v������܂��B
+	// このようにすることで、uboデータをそのままuboにmemcpyできます。
+	// 注意：手動でのパディングを避けるために、GPUとアライメントが合うデータ型（vec4, mat4）を使用する必要があります。
 	struct ShaderData {
 		glm::mat4 projectionMatrix;
 		glm::mat4 modelMatrix;
 		glm::mat4 viewMatrix;
 	};
 
-	// �p�C�v���C�����C�A�E�g�́A�p�C�v���C�����f�B�X�N���v�^�Z�b�g�ɃA�N�Z�X���邽�߂Ɏg�p����܂��B
-	// ����́A�V�F�[�_�[�X�e�[�W�ƃV�F�[�_�[���\�[�X�Ԃ̃C���^�[�t�F�[�X���i���ۂ̃f�[�^���o�C���h�����Ɂj��`���܂��B
-	// �p�C�v���C�����C�A�E�g�́A�C���^�[�t�F�[�X����v�������A�����̃p�C�v���C���Ԃŋ��L�ł��܂��B
+	// パイプラインレイアウトは、パイプラインがディスクリプタセットにアクセスするために使用されます。
+	// これは、シェーダーステージとシェーダーリソース間のインターフェースを（実際のデータをバインドせずに）定義します。
+	// パイプラインレイアウトは、インターフェースが一致する限り、複数のパイプライン間で共有できます。
 	VkPipelineLayout pipelineLayout{ VK_NULL_HANDLE };
 
-	// �p�C�v���C���i���΂��΁u�p�C�v���C���X�e�[�g�I�u�W�F�N�g�v�ƌĂ΂��j�́A�p�C�v���C���ɉe����^���邷�ׂẴX�e�[�g���u�Ă��t����v���߂Ɏg�p����܂��B
-	// OpenGL�ł͂��ׂẴX�e�[�g���i�قځj���ł��ύX�ł��܂������AVulkan�ł̓O���t�B�b�N�X�i����уR���s���[�g�j�p�C�v���C���̃X�e�[�g�����O�Ƀ��C�A�E�g����K�v������܂��B
-	// ���̂��߁A���I�łȂ��p�C�v���C���X�e�[�g�̑g�ݍ��킹���ƂɁA�V�����p�C�v���C�����K�v�ɂȂ�܂��i�����ł͐������Ȃ��������̗�O������܂��j�B
-	// ����͎��O�̌v��Ƃ����V���Ȏ�����ǉ����܂����A�h���C�o�[�ɂ��p�t�H�[�}���X�œK���̐�D�̋@��ł�����܂��B
+	// パイプライン（しばしば「パイプラインステートオブジェクト」と呼ばれる）は、パイプラインに影響を与えるすべてのステートを「焼き付ける」ために使用されます。
+	// OpenGLではすべてのステートが（ほぼ）いつでも変更できましたが、Vulkanではグラフィックス（およびコンピュート）パイプラインのステートを事前にレイアウトする必要があります。
+	// そのため、動的でないパイプラインステートの組み合わせごとに、新しいパイプラインが必要になります（ここでは説明しないいくつかの例外があります）。
+	// これは事前の計画という新たな次元を追加しますが、ドライバーによるパフォーマンス最適化の絶好の機会でもあります。
 	VkPipeline pipeline{ VK_NULL_HANDLE };
 
-	// �f�B�X�N���v�^�Z�b�g���C�A�E�g�́A�V�F�[�_�[�̃o�C���f�B���O���C�A�E�g���i���ۂɃf�B�X�N���v�^���Q�Ƃ����Ɂj�L�q���܂��B
-	// �p�C�v���C�����C�A�E�g�Ɠ��l�ɁA����͂قڐ݌v�}�̂悤�Ȃ��̂ł���A���C�A�E�g����v�������A�قȂ�f�B�X�N���v�^�Z�b�g�Ŏg�p�ł��܂��B
+	// ディスクリプタセットレイアウトは、シェーダーのバインディングレイアウトを（実際にディスクリプタを参照せずに）記述します。
+	// パイプラインレイアウトと同様に、これはほぼ設計図のようなものであり、レイアウトが一致する限り、異なるディスクリプタセットで使用できます。
 	VkDescriptorSetLayout descriptorSetLayout{ VK_NULL_HANDLE };
 
-	// �����v���~�e�B�u
-	// ������Vulkan�̏d�v�ȊT�O�ł���AOpenGL�ł͂قƂ�ǉB����Ă��܂����B����𐳂����s�����Ƃ�Vulkan���g�p�����Ŕ��ɏd�v�ł��B
+	// 同期プリミティブ
+	// 同期はVulkanの重要な概念であり、OpenGLではほとんど隠されていました。これを正しく行うことがVulkanを使用する上で非常に重要です。
 
-	// �Z�}�t�H�́A�O���t�B�b�N�X�L���[���̑���𒲐����A�������R�}���h������ۏ؂��邽�߂Ɏg�p����܂��B
+	// セマフォは、グラフィックスキュー内の操作を調整し、正しいコマンド順序を保証するために使用されます。
 	std::array<VkSemaphore, MAX_CONCURRENT_FRAMES> presentCompleteSemaphores{};
 	std::array<VkSemaphore, MAX_CONCURRENT_FRAMES> renderCompleteSemaphores{};
 
@@ -109,26 +109,26 @@ public:
 	std::array<VkCommandBuffer, MAX_CONCURRENT_FRAMES> commandBuffers{};
 	std::array<VkFence, MAX_CONCURRENT_FRAMES> waitFences{};
 
-	// �����������I�u�W�F�N�g��I�����邽�߂ɁA���݂̃t���[����ǐՂ���K�v������܂��B
+	// 正しい同期オブジェクトを選択するために、現在のフレームを追跡する必要があります。
 	uint32_t currentFrame{ 0 };
 
 	VulkanExample() : VulkanExampleBase()
 	{
 		title = "Vulkan Example - Basic indexed triangle";
-		// �ȒP�ɂ��邽�߂ɁA�t���[�����[�N��UI�I�[�o�[���C�͎g�p���܂���B
+		// 簡単にするために、フレームワークのUIオーバーレイは使用しません。
 		settings.overlay = false;
-		// �f�t�H���g��look-at�J�������Z�b�g�A�b�v���܂��B
+		// デフォルトのlook-atカメラをセットアップします。
 		camera.type = Camera::CameraType::lookat;
 		camera.setPosition(glm::vec3(0.0f, 0.0f, -2.5f));
 		camera.setRotation(glm::vec3(0.0f));
 		camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 256.0f);
-		// �����Őݒ肳��Ă��Ȃ��l�́A���N���X�̃R���X�g���N�^�ŏ���������܂��B
+		// ここで設定されていない値は、基底クラスのコンストラクタで初期化されます。
 	}
 
 	~VulkanExample()
 	{
-		// �g�p����Vulkan���\�[�X���N���[���A�b�v���܂��B
-		// ���ӁF�p�����ꂽ�f�X�g���N�^�����N���X�Ɋi�[����Ă��郊�\�[�X���N���[���A�b�v���܂��B
+		// 使用したVulkanリソースをクリーンアップします。
+		// 注意：継承されたデストラクタが基底クラスに格納されているリソースをクリーンアップします。
 		vkDestroyPipeline(device, pipeline, nullptr);
 
 		vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
@@ -151,13 +151,13 @@ public:
 		}
 	}
 
-	// ���̊֐��́A�v�����邷�ׂẴv���p�e�B�t���O�i��F�f�o�C�X���[�J���A�z�X�g���j���T�|�[�g����f�o�C�X�������^�C�v��v�����邽�߂Ɏg�p����܂��B
-	// ��������ƁA�v�����ꂽ�������v���p�e�B�ɓK�����郁�����^�C�v�̃C���f�b�N�X��Ԃ��܂��B
-	// ����́A�������قȂ郁�����v���p�e�B�����C�ӂ̐��̃������^�C�v��񋟂���\�������邽�߁A�K�v�ł��B
-	// ���܂��܂ȃ������\���̏ڍׂɂ��ẮAhttps://vulkan.gpuinfo.org/ ���m�F���Ă��������B
+	// この関数は、要求するすべてのプロパティフラグ（例：デバイスローカル、ホスト可視）をサポートするデバイスメモリタイプを要求するために使用されます。
+	// 成功すると、要求されたメモリプロパティに適合するメモリタイプのインデックスを返します。
+	// これは、実装が異なるメモリプロパティを持つ任意の数のメモリタイプを提供する可能性があるため、必要です。
+	// さまざまなメモリ構成の詳細については、https://vulkan.gpuinfo.org/ を確認してください。
 	uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties)
 	{
-		// ���̃T���v���Ŏg�p����Ă���f�o�C�X�ŗ��p�\�Ȃ��ׂẴ������^�C�v���C�e���[�g���܂��B
+		// このサンプルで使用されているデバイスで利用可能なすべてのメモリタイプをイテレートします。
 		for (uint32_t i = 0; i < deviceMemoryProperties.memoryTypeCount; i++)
 		{
 			if ((typeBits & 1) == 1)
@@ -173,53 +173,53 @@ public:
 		throw "Could not find a suitable memory type!";
 	}
 
-	// ���̃T���v���Ŏg�p�����t���[�����Ƃ́iin flight�jVulkan�����v���~�e�B�u���쐬���܂��B
+	// このサンプルで使用されるフレームごとの（in flight）Vulkan同期プリミティブを作成します。
 	void createSynchronizationPrimitives()
 	{
-		// �Z�}�t�H�́A�L���[���ł̐������R�}���h�����̂��߂Ɏg�p����܂��B
+		// セマフォは、キュー内での正しいコマンド順序のために使用されます。
 		VkSemaphoreCreateInfo semaphoreCI{};
 		semaphoreCI.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-		// �t�F���X�́A�z�X�g���ŕ`��R�}���h�o�b�t�@�̊������m�F���邽�߂Ɏg�p����܂��B
+		// フェンスは、ホスト側で描画コマンドバッファの完了を確認するために使用されます。
 		VkFenceCreateInfo fenceCI{};
 		fenceCI.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		// �t�F���X���V�O�i����Ԃō쐬���܂��i����ɂ��A�e�R�}���h�o�b�t�@�̍ŏ��̃����_�����O�őҋ@���Ȃ��Ȃ�܂��j�B
+		// フェンスをシグナル状態で作成します（これにより、各コマンドバッファの最初のレンダリングで待機しなくなります）。
 		fenceCI.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 		for (uint32_t i = 0; i < MAX_CONCURRENT_FRAMES; i++) {
-			// �ēx�T�u�~�b�g���J�n����O�ɁA�C���[�W�̒񎦂��������Ă��邱�Ƃ�ۏ؂��邽�߂Ɏg�p�����Z�}�t�H�B
+			// 再度サブミットを開始する前に、イメージの提示が完了していることを保証するために使用されるセマフォ。
 			VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCI, nullptr, &presentCompleteSemaphores[i]));
-			// �C���[�W���L���[�ɃT�u�~�b�g����O�ɁA�T�u�~�b�g���ꂽ���ׂẴR�}���h���I���������Ƃ�ۏ؂��邽�߂Ɏg�p�����Z�}�t�H�B
+			// イメージをキューにサブミットする前に、サブミットされたすべてのコマンドが終了したことを保証するために使用されるセマフォ。
 			VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCI, nullptr, &renderCompleteSemaphores[i]));
 
-			// �R�}���h�o�b�t�@���ēx�g�p����O�ɁA���̎��s�������������Ƃ�ۏ؂��邽�߂Ɏg�p�����t�F���X�B
+			// コマンドバッファを再度使用する前に、その実行が完了したことを保証するために使用されるフェンス。
 			VK_CHECK_RESULT(vkCreateFence(device, &fenceCI, nullptr, &waitFences[i]));
 		}
 	}
 
 	void createCommandBuffers()
 	{
-		// ���ׂẴR�}���h�o�b�t�@�́A�R�}���h�v�[�����犄�蓖�Ă��܂��B
+		// すべてのコマンドバッファは、コマンドプールから割り当てられます。
 		VkCommandPoolCreateInfo commandPoolCI{};
 		commandPoolCI.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 		commandPoolCI.queueFamilyIndex = swapChain.queueNodeIndex;
 		commandPoolCI.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 		VK_CHECK_RESULT(vkCreateCommandPool(device, &commandPoolCI, nullptr, &commandPool));
 
-		// ��L�̃v�[������A�ő哯�����s�t���[�������Ƃ�1�̃R�}���h�o�b�t�@�����蓖�Ă܂��B
+		// 上記のプールから、最大同時実行フレーム数ごとに1つのコマンドバッファを割り当てます。
 		VkCommandBufferAllocateInfo cmdBufAllocateInfo = vks::initializers::commandBufferAllocateInfo(commandPool, VK_COMMAND_BUFFER_LEVEL_PRIMARY, MAX_CONCURRENT_FRAMES);
 		VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &cmdBufAllocateInfo, commandBuffers.data()));
 	}
 
-	// �C���f�b�N�X�t���O�p�`�̂��߂̒��_����уC���f�b�N�X�o�b�t�@���������܂��B
-	// �܂��A�X�e�[�W���O���g�p���Ă������f�o�C�X���[�J���������ɃA�b�v���[�h���A���_�V�F�[�_�[�Ɉ�v����悤�ɒ��_���͂Ƒ����o�C���f�B���O�����������܂��B
+	// インデックス付き三角形のための頂点およびインデックスバッファを準備します。
+	// また、ステージングを使用してそれらをデバイスローカルメモリにアップロードし、頂点シェーダーに一致するように頂点入力と属性バインディングを初期化します。
 	void createVertexBuffer()
 	{
-		// Vulkan�̃������Ǘ��S�ʂɊւ��钍�ӓ_�F
-		//	����͔��ɕ��G�ȃg�s�b�N�ł���A�T���v���A�v���P�[�V�����ł͏����Ȍʂ̃������A���P�[�V�����Ŗ�肠��܂��񂪁A
-		//	���ۂ̃A�v���P�[�V�����ōs���ׂ����Ƃł͂���܂���B���ۂ̃A�v���P�[�V�����ł́A��x�ɑ傫�ȃ������`�����N�����蓖�Ă�ׂ��ł��B
+		// Vulkanのメモリ管理全般に関する注意点：
+		//	これは非常に複雑なトピックであり、サンプルアプリケーションでは小さな個別のメモリアロケーションで問題ありませんが、
+		//	実際のアプリケーションで行うべきことではありません。実際のアプリケーションでは、一度に大きなメモリチャンクを割り当てるべきです。
 
-		// ���_�̐ݒ�
+		// 頂点の設定
 		std::vector<Vertex> vertexBuffer{
 			{ { 1.0f,  1.0f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
 			{ { -1.0f, 1.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
@@ -227,7 +227,7 @@ public:
 		};
 		uint32_t vertexBufferSize = static_cast<uint32_t>(vertexBuffer.size()) * sizeof(Vertex);
 
-		// �C���f�b�N�X�̐ݒ�
+		// インデックスの設定
 		std::vector<uint32_t> indexBuffer{ 0, 1, 2 };
 		indices.count = static_cast<uint32_t>(indexBuffer.size());
 		uint32_t indexBufferSize = indices.count * sizeof(uint32_t);
@@ -236,18 +236,18 @@ public:
 		memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		VkMemoryRequirements memReqs;
 
-		// ���_�o�b�t�@��C���f�b�N�X�o�b�t�@�̂悤�ȐÓI�f�[�^�́AGPU�ɂ��œK�i���ő��j�ȃA�N�Z�X�̂��߂Ƀf�o�C�X�������Ɋi�[�����ׂ��ł��B
+		// 頂点バッファやインデックスバッファのような静的データは、GPUによる最適（かつ最速）なアクセスのためにデバイスメモリに格納されるべきです。
 		//
-		// ������������邽�߂ɁA������u�X�e�[�W���O�o�b�t�@�v���g�p���܂��F
-		// - �z�X�g������ȁi�����ă}�b�v�\�ȁj�o�b�t�@���쐬����
-		// - �f�[�^�����̃o�b�t�@�ɃR�s�[����
-		// - �f�o�C�X��ɓ����T�C�Y�̃��[�J���ȃo�b�t�@�iVRAM�j��������쐬����
-		// - �R�}���h�o�b�t�@���g�p���ăz�X�g����f�o�C�X�փf�[�^���R�s�[����
-		// - �z�X�g���́i�X�e�[�W���O�j�o�b�t�@���폜����
-		// - �����_�����O�ɂ̓f�o�C�X���[�J���̃o�b�t�@���g�p����
+		// これを実現するために、いわゆる「ステージングバッファ」を使用します：
+		// - ホストから可視な（そしてマップ可能な）バッファを作成する
+		// - データをこのバッファにコピーする
+		// - デバイス上に同じサイズのローカルなバッファ（VRAM）をもう一つ作成する
+		// - コマンドバッファを使用してホストからデバイスへデータをコピーする
+		// - ホスト可視の（ステージング）バッファを削除する
+		// - レンダリングにはデバイスローカルのバッファを使用する
 		//
-		// ���ӁF�z�X�g�iCPU�j��GPU�����������������L���铝���������A�[�L�e�N�`���ł́A�X�e�[�W���O�͕K�v����܂���B
-		// ���̃T���v���𕪂���₷���ۂ��߁A���̃`�F�b�N�͍s���Ă��܂���B
+		// 注意：ホスト（CPU）とGPUが同じメモリを共有する統合メモリアーキテクチャでは、ステージングは必要ありません。
+		// このサンプルを分かりやすく保つため、そのチェックは行っていません。
 
 		struct StagingBuffer {
 			VkDeviceMemory memory;
@@ -261,27 +261,27 @@ public:
 
 		void* data;
 
-		// ���_�o�b�t�@
+		// 頂点バッファ
 		VkBufferCreateInfo vertexBufferInfoCI{};
 		vertexBufferInfoCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		vertexBufferInfoCI.size = vertexBufferSize;
-		// �o�b�t�@�̓R�s�[���Ƃ��Ďg�p����܂��B
+		// バッファはコピー元として使用されます。
 		vertexBufferInfoCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		// ���_�f�[�^���R�s�[���邽�߂̃z�X�g���o�b�t�@�i�X�e�[�W���O�o�b�t�@�j���쐬���܂��B
+		// 頂点データをコピーするためのホスト可視バッファ（ステージングバッファ）を作成します。
 		VK_CHECK_RESULT(vkCreateBuffer(device, &vertexBufferInfoCI, nullptr, &stagingBuffers.vertices.buffer));
 		vkGetBufferMemoryRequirements(device, stagingBuffers.vertices.buffer, &memReqs);
 		memAlloc.allocationSize = memReqs.size;
-		// �f�[�^���R�s�[���邽�߂Ɏg�p�ł���z�X�g�� sicht�ȃ������^�C�v��v�����܂��B
-		// �܂��A�o�b�t�@�̃A���}�b�v����ɏ������݂�GPU�Ɍ�����悤�ɁA�R�q�[�����g�ł��邱�Ƃ��v�����܂��B
+		// データをコピーするために使用できるホスト可 sichtなメモリタイプを要求します。
+		// また、バッファのアンマップ直後に書き込みがGPUに見えるように、コヒーレントであることも要求します。
 		memAlloc.memoryTypeIndex = getMemoryTypeIndex(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &stagingBuffers.vertices.memory));
-		// �}�b�v���ăR�s�[
+		// マップしてコピー
 		VK_CHECK_RESULT(vkMapMemory(device, stagingBuffers.vertices.memory, 0, memAlloc.allocationSize, 0, &data));
 		memcpy(data, vertexBuffer.data(), vertexBufferSize);
 		vkUnmapMemory(device, stagingBuffers.vertices.memory);
 		VK_CHECK_RESULT(vkBindBufferMemory(device, stagingBuffers.vertices.buffer, stagingBuffers.vertices.memory, 0));
 
-		// �i�z�X�g���[�J���ȁj���_�f�[�^���R�s�[����A�����_�����O�Ɏg�p�����f�o�C�X���[�J���ȃo�b�t�@���쐬���܂��B
+		// （ホストローカルな）頂点データがコピーされ、レンダリングに使用されるデバイスローカルなバッファを作成します。
 		vertexBufferInfoCI.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 		VK_CHECK_RESULT(vkCreateBuffer(device, &vertexBufferInfoCI, nullptr, &vertices.buffer));
 		vkGetBufferMemoryRequirements(device, vertices.buffer, &memReqs);
@@ -290,12 +290,12 @@ public:
 		VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &vertices.memory));
 		VK_CHECK_RESULT(vkBindBufferMemory(device, vertices.buffer, vertices.memory, 0));
 
-		// �C���f�b�N�X�o�b�t�@
+		// インデックスバッファ
 		VkBufferCreateInfo indexbufferCI{};
 		indexbufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		indexbufferCI.size = indexBufferSize;
 		indexbufferCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-		// �C���f�b�N�X�f�[�^���z�X�g���̃o�b�t�@�i�X�e�[�W���O�o�b�t�@�j�ɃR�s�[���܂��B
+		// インデックスデータをホスト可視のバッファ（ステージングバッファ）にコピーします。
 		VK_CHECK_RESULT(vkCreateBuffer(device, &indexbufferCI, nullptr, &stagingBuffers.indices.buffer));
 		vkGetBufferMemoryRequirements(device, stagingBuffers.indices.buffer, &memReqs);
 		memAlloc.allocationSize = memReqs.size;
@@ -306,7 +306,7 @@ public:
 		vkUnmapMemory(device, stagingBuffers.indices.memory);
 		VK_CHECK_RESULT(vkBindBufferMemory(device, stagingBuffers.indices.buffer, stagingBuffers.indices.memory, 0));
 
-		// �f�o�C�X�̂݉��̈���o�b�t�@���쐬���܂��B
+		// デバイスのみ可視の宛先バッファを作成します。
 		indexbufferCI.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 		VK_CHECK_RESULT(vkCreateBuffer(device, &indexbufferCI, nullptr, &indices.buffer));
 		vkGetBufferMemoryRequirements(device, indices.buffer, &memReqs);
@@ -315,8 +315,8 @@ public:
 		VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &indices.memory));
 		VK_CHECK_RESULT(vkBindBufferMemory(device, indices.buffer, indices.memory, 0));
 
-		// �o�b�t�@�R�s�[�̓L���[�ɃT�u�~�b�g����K�v�����邽�߁A���̂��߂̃R�}���h�o�b�t�@���K�v�ł��B
-		// ���ӁF�ꕔ�̃f�o�C�X�́A��ʂ̃R�s�[���s���ۂɍ����ɂȂ�\���̂����p�̓]���L���[�i�]���r�b�g�݂̂��ݒ肳��Ă���j��񋟂��Ă��܂��B
+		// バッファコピーはキューにサブミットする必要があるため、そのためのコマンドバッファが必要です。
+		// 注意：一部のデバイスは、大量のコピーを行う際に高速になる可能性のある専用の転送キュー（転送ビットのみが設定されている）を提供しています。
 		VkCommandBuffer copyCmd;
 
 		VkCommandBufferAllocateInfo cmdBufAllocateInfo{};
@@ -328,78 +328,78 @@ public:
 
 		VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
 		VK_CHECK_RESULT(vkBeginCommandBuffer(copyCmd, &cmdBufInfo));
-		// �o�b�t�@�̈�̃R�s�[���R�}���h�o�b�t�@�ɓ���܂��B
+		// バッファ領域のコピーをコマンドバッファに入れます。
 		VkBufferCopy copyRegion{};
-		// ���_�o�b�t�@
+		// 頂点バッファ
 		copyRegion.size = vertexBufferSize;
 		vkCmdCopyBuffer(copyCmd, stagingBuffers.vertices.buffer, vertices.buffer, 1, &copyRegion);
-		// �C���f�b�N�X�o�b�t�@
+		// インデックスバッファ
 		copyRegion.size = indexBufferSize;
 		vkCmdCopyBuffer(copyCmd, stagingBuffers.indices.buffer, indices.buffer, 1, &copyRegion);
 		VK_CHECK_RESULT(vkEndCommandBuffer(copyCmd));
 
-		// �R�s�[���������邽�߂ɁA�R�}���h�o�b�t�@���L���[�ɃT�u�~�b�g���܂��B
+		// コピーを完了するために、コマンドバッファをキューにサブミットします。
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.commandBufferCount = 1;
 		submitInfo.pCommandBuffers = &copyCmd;
 
-		// �R�}���h�o�b�t�@�̎��s�������������Ƃ�ۏ؂��邽�߂̃t�F���X���쐬���܂��B
+		// コマンドバッファの実行が完了したことを保証するためのフェンスを作成します。
 		VkFenceCreateInfo fenceCI{};
 		fenceCI.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 		fenceCI.flags = 0;
 		VkFence fence;
 		VK_CHECK_RESULT(vkCreateFence(device, &fenceCI, nullptr, &fence));
 
-		// �L���[�ɃT�u�~�b�g���܂��B
+		// キューにサブミットします。
 		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, fence));
-		// �t�F���X���R�}���h�o�b�t�@�̎��s������ʒm����̂�҂��܂��B
+		// フェンスがコマンドバッファの実行完了を通知するのを待ちます。
 		VK_CHECK_RESULT(vkWaitForFences(device, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT));
 
 		vkDestroyFence(device, fence, nullptr);
 		vkFreeCommandBuffers(device, commandPool, 1, &copyCmd);
 
-		// �X�e�[�W���O�o�b�t�@��j�����܂��B
-		// ���ӁF�X�e�[�W���O�o�b�t�@�́A�R�s�[���T�u�~�b�g������s�����O�ɍ폜���Ă͂����܂���B
+		// ステージングバッファを破棄します。
+		// 注意：ステージングバッファは、コピーがサブミットされ実行される前に削除してはいけません。
 		vkDestroyBuffer(device, stagingBuffers.vertices.buffer, nullptr);
 		vkFreeMemory(device, stagingBuffers.vertices.memory, nullptr);
 		vkDestroyBuffer(device, stagingBuffers.indices.buffer, nullptr);
 		vkFreeMemory(device, stagingBuffers.indices.memory, nullptr);
 	}
 
-	// �f�B�X�N���v�^�̓v�[�����犄�蓖�Ă��܂��B���̃v�[���́A�g�p����f�B�X�N���v�^�̎�ނƁi�ő�j���������ɓ`���܂��B
+	// ディスクリプタはプールから割り当てられます。このプールは、使用するディスクリプタの種類と（最大）数を実装に伝えます。
 	void createDescriptorPool()
 	{
-		// API�ɑ΂��āA�^���Ƃɗv�������f�B�X�N���v�^�̍ő吔��`����K�v������܂��B
+		// APIに対して、型ごとに要求されるディスクリプタの最大数を伝える必要があります。
 		VkDescriptorPoolSize descriptorTypeCounts[1];
-		// ���̃T���v���ł́A�f�B�X�N���v�^�̌^��1�i���j�t�H�[���o�b�t�@�j�����ł��B
+		// このサンプルでは、ディスクリプタの型は1つ（ユニフォームバッファ）だけです。
 		descriptorTypeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		// �t���[�����Ƃ�1�̃o�b�t�@�i�܂�1�̃f�B�X�N���v�^�j������܂��B
+		// フレームごとに1つのバッファ（つまり1つのディスクリプタ）があります。
 		descriptorTypeCounts[0].descriptorCount = MAX_CONCURRENT_FRAMES;
-		// ���̌^��ǉ�����ɂ́A�^�J�E���g���X�g�ɐV�����G���g����ǉ�����K�v������܂��B
-		// ��F2�̌����C���[�W�T���v���[�̏ꍇ�F
+		// 他の型を追加するには、型カウントリストに新しいエントリを追加する必要があります。
+		// 例：2つの結合イメージサンプラーの場合：
 		// typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		// typeCounts[1].descriptorCount = 2;
 
-		// �O���[�o���ȃf�B�X�N���v�^�v�[�����쐬���܂��B
-		// ���̃T���v���Ŏg�p����邷�ׂẴf�B�X�N���v�^�́A���̃v�[�����犄�蓖�Ă��܂��B
+		// グローバルなディスクリプタプールを作成します。
+		// このサンプルで使用されるすべてのディスクリプタは、このプールから割り当てられます。
 		VkDescriptorPoolCreateInfo descriptorPoolCI{};
 		descriptorPoolCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 		descriptorPoolCI.pNext = nullptr;
 		descriptorPoolCI.poolSizeCount = 1;
 		descriptorPoolCI.pPoolSizes = descriptorTypeCounts;
-		// ���̃v�[������v���ł���f�B�X�N���v�^�Z�b�g�̍ő吔��ݒ肵�܂��i���̐����𒴂��ėv������ƃG���[�ɂȂ�܂��j�B
-		// ���̃T���v���ł́A�t���[�����ƂɃ��j�t�H�[���o�b�t�@���Ƃ�1�̃Z�b�g���쐬���܂��B
+		// このプールから要求できるディスクリプタセットの最大数を設定します（この制限を超えて要求するとエラーになります）。
+		// このサンプルでは、フレームごとにユニフォームバッファごとに1つのセットを作成します。
 		descriptorPoolCI.maxSets = MAX_CONCURRENT_FRAMES;
 		VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolCI, nullptr, &descriptorPool));
 	}
 
-	// �f�B�X�N���v�^�Z�b�g���C�A�E�g�́A�A�v���P�[�V�����ƃV�F�[�_�[�Ԃ̃C���^�[�t�F�[�X���`���܂��B
-	// ��{�I�ɁA�قȂ�V�F�[�_�[�X�e�[�W���A���j�t�H�[���o�b�t�@��C���[�W�T���v���[�Ȃǂ��o�C���h���邽�߂̃f�B�X�N���v�^�ɐڑ����܂��B
-	// ���������āA���ׂẴV�F�[�_�[�o�C���f�B���O�́A1�̃f�B�X�N���v�^�Z�b�g���C�A�E�g�o�C���f�B���O�Ƀ}�b�s���O�����ׂ��ł��B
+	// ディスクリプタセットレイアウトは、アプリケーションとシェーダー間のインターフェースを定義します。
+	// 基本的に、異なるシェーダーステージを、ユニフォームバッファやイメージサンプラーなどをバインドするためのディスクリプタに接続します。
+	// したがって、すべてのシェーダーバインディングは、1つのディスクリプタセットレイアウトバインディングにマッピングされるべきです。
 	void createDescriptorSetLayout()
 	{
-		// �o�C���f�B���O 0: ���j�t�H�[���o�b�t�@�i���_�V�F�[�_�[�j
+		// バインディング 0: ユニフォームバッファ（頂点シェーダー）
 		VkDescriptorSetLayoutBinding layoutBinding{};
 		layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 		layoutBinding.descriptorCount = 1;
@@ -413,8 +413,8 @@ public:
 		descriptorLayoutCI.pBindings = &layoutBinding;
 		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorLayoutCI, nullptr, &descriptorSetLayout));
 
-		// ���̃f�B�X�N���v�^�Z�b�g���C�A�E�g�Ɋ�Â��ă����_�����O�p�C�v���C���𐶐����邽�߂Ɏg�p�����p�C�v���C�����C�A�E�g���쐬���܂��B
-		// ��蕡�G�ȃV�i���I�ł́A�ė��p�\�ȈقȂ�f�B�X�N���v�^�Z�b�g���C�A�E�g�ɑ΂��āA�قȂ�p�C�v���C�����C�A�E�g�������ƂɂȂ�܂��B
+		// このディスクリプタセットレイアウトに基づいてレンダリングパイプラインを生成するために使用されるパイプラインレイアウトを作成します。
+		// より複雑なシナリオでは、再利用可能な異なるディスクリプタセットレイアウトに対して、異なるパイプラインレイアウトを持つことになります。
 		VkPipelineLayoutCreateInfo pipelineLayoutCI{};
 		pipelineLayoutCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 		pipelineLayoutCI.pNext = nullptr;
@@ -423,11 +423,11 @@ public:
 		VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pipelineLayoutCI, nullptr, &pipelineLayout));
 	}
 
-	// �V�F�[�_�[�́A���j�t�H�[���o�b�t�@���u�w���v�f�B�X�N���v�^�Z�b�g���g�p���ăf�[�^�ɃA�N�Z�X���܂��B
-	// �f�B�X�N���v�^�Z�b�g�́A��L�ō쐬�����f�B�X�N���v�^�Z�b�g���C�A�E�g�𗘗p���܂��B
+	// シェーダーは、ユニフォームバッファを「指す」ディスクリプタセットを使用してデータにアクセスします。
+	// ディスクリプタセットは、上記で作成したディスクリプタセットレイアウトを利用します。
 	void createDescriptorSets()
 	{
-		// �O���[�o���ȃf�B�X�N���v�^�v�[������A�t���[�����Ƃ�1�̃f�B�X�N���v�^�Z�b�g�����蓖�Ă܂��B
+		// グローバルなディスクリプタプールから、フレームごとに1つのディスクリプタセットを割り当てます。
 		for (uint32_t i = 0; i < MAX_CONCURRENT_FRAMES; i++) {
 			VkDescriptorSetAllocateInfo allocInfo{};
 			allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -436,16 +436,16 @@ public:
 			allocInfo.pSetLayouts = &descriptorSetLayout;
 			VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &uniformBuffers[i].descriptorSet));
 
-			// �V�F�[�_�[�̃o�C���f�B���O�|�C���g�����肷��f�B�X�N���v�^�Z�b�g���X�V���܂��B
-			// �V�F�[�_�[�Ŏg�p����邷�ׂẴo�C���f�B���O�|�C���g�ɑ΂��āA���̃o�C���f�B���O�|�C���g�Ɉ�v����f�B�X�N���v�^�Z�b�g��1�K�v�ł��B
+			// シェーダーのバインディングポイントを決定するディスクリプタセットを更新します。
+			// シェーダーで使用されるすべてのバインディングポイントに対して、そのバインディングポイントに一致するディスクリプタセットが1つ必要です。
 			VkWriteDescriptorSet writeDescriptorSet{};
 
-			// �o�b�t�@�̏��́A�f�B�X�N���v�^���\���̂��g�p���ēn����܂��B
+			// バッファの情報は、ディスクリプタ情報構造体を使用して渡されます。
 			VkDescriptorBufferInfo bufferInfo{};
 			bufferInfo.buffer = uniformBuffers[i].buffer;
 			bufferInfo.range = sizeof(ShaderData);
 
-			// �o�C���f�B���O 0 : ���j�t�H�[���o�b�t�@
+			// バインディング 0 : ユニフォームバッファ
 			writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 			writeDescriptorSet.dstSet = uniformBuffers[i].descriptorSet;
 			writeDescriptorSet.descriptorCount = 1;
@@ -456,16 +456,16 @@ public:
 		}
 	}
 
-	// �t���[���o�b�t�@�Ŏg�p�����[�x�i����уX�e���V���j�o�b�t�@�A�^�b�`�����g���쐬���܂��B
-	// ���ӁF���N���X�̉��z�֐��̃I�[�o�[���C�h�ł���AVulkanExampleBase::prepare������Ăяo����܂��B
+	// フレームバッファで使用される深度（およびステンシル）バッファアタッチメントを作成します。
+	// 注意：基底クラスの仮想関数のオーバーライドであり、VulkanExampleBase::prepare内から呼び出されます。
 	void setupDepthStencil()
 	{
-		// �[�x�X�e���V���A�^�b�`�����g�Ƃ��Ďg�p�����œK�ȃC���[�W���쐬���܂��B
+		// 深度ステンシルアタッチメントとして使用される最適なイメージを作成します。
 		VkImageCreateInfo imageCI{};
 		imageCI.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		imageCI.imageType = VK_IMAGE_TYPE_2D;
 		imageCI.format = depthFormat;
-		// �T���v���̕��ƍ������g�p���܂��B
+		// サンプルの幅と高さを使用します。
 		imageCI.extent = { width, height, 1 };
 		imageCI.mipLevels = 1;
 		imageCI.arrayLayers = 1;
@@ -475,7 +475,7 @@ public:
 		imageCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 		VK_CHECK_RESULT(vkCreateImage(device, &imageCI, nullptr, &depthStencil.image));
 
-		// �C���[�W�̂��߂̃��������i�f�o�C�X���[�J���Ɂj���蓖�āA�������X�̃C���[�W�Ƀo�C���h���܂��B
+		// イメージのためのメモリを（デバイスローカルに）割り当て、それを我々のイメージにバインドします。
 		VkMemoryAllocateInfo memAlloc{};
 		memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 		VkMemoryRequirements memReqs;
@@ -485,16 +485,16 @@ public:
 		VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &depthStencil.memory));
 		VK_CHECK_RESULT(vkBindImageMemory(device, depthStencil.image, depthStencil.memory, 0));
 
-		// �[�x�X�e���V���C���[�W�̂��߂̃r���[���쐬���܂��B
-		// Vulkan�ł̓C���[�W�͒��ڃA�N�Z�X���ꂸ�A�T�u���\�[�X�͈͂ɂ���ċL�q���ꂽ�r���[����ăA�N�Z�X����܂��B
-		// ����ɂ��A�قȂ�͈͂�����1�̃C���[�W�̕����̃r���[���\�ɂȂ�܂��i��F�قȂ郌�C���[�̂��߁j�B
+		// 深度ステンシルイメージのためのビューを作成します。
+		// Vulkanではイメージは直接アクセスされず、サブリソース範囲によって記述されたビューを介してアクセスされます。
+		// これにより、異なる範囲を持つ1つのイメージの複数のビューが可能になります（例：異なるレイヤーのため）。
 		VkImageViewCreateInfo depthStencilViewCI{};
 		depthStencilViewCI.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		depthStencilViewCI.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		depthStencilViewCI.format = depthFormat;
 		depthStencilViewCI.subresourceRange = {};
 		depthStencilViewCI.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-		// �X�e���V���A�X�y�N�g�́A�[�x+�X�e���V���t�H�[�}�b�g�iVK_FORMAT_D16_UNORM_S8_UINT..VK_FORMAT_D32_SFLOAT_S8_UINT�j�ł̂ݐݒ肷��K�v������܂��B
+		// ステンシルアスペクトは、深度+ステンシルフォーマット（VK_FORMAT_D16_UNORM_S8_UINT..VK_FORMAT_D32_SFLOAT_S8_UINT）でのみ設定する必要があります。
 		if (depthFormat >= VK_FORMAT_D16_UNORM_S8_UINT) {
 			depthStencilViewCI.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 		}
@@ -506,96 +506,96 @@ public:
 		VK_CHECK_RESULT(vkCreateImageView(device, &depthStencilViewCI, nullptr, &depthStencil.view));
 	}
 
-	// �e�X���b�v�`�F�[���C���[�W�ɑ΂��ăt���[���o�b�t�@���쐬���܂��B
-	// ���ӁF���N���X�̉��z�֐��̃I�[�o�[���C�h�ł���AVulkanExampleBase::prepare������Ăяo����܂��B
+	// 各スワップチェーンイメージに対してフレームバッファを作成します。
+	// 注意：基底クラスの仮想関数のオーバーライドであり、VulkanExampleBase::prepare内から呼び出されます。
 	void setupFrameBuffer()
 	{
-		// �X���b�v�`�F�[�����̂��ׂẴC���[�W�ɑ΂��ăt���[���o�b�t�@���쐬���܂��B
+		// スワップチェーン内のすべてのイメージに対してフレームバッファを作成します。
 		frameBuffers.resize(swapChain.imageCount);
 		for (size_t i = 0; i < frameBuffers.size(); i++)
 		{
 			std::array<VkImageView, 2> attachments;
-			// �J���[�A�^�b�`�����g�̓X���b�v�`�F�[���C���[�W�̃r���[�ł��B
+			// カラーアタッチメントはスワップチェーンイメージのビューです。
 			attachments[0] = swapChain.buffers[i].view;
-			// �[�x/�X�e���V���A�^�b�`�����g�́A���݂�GPU�ł̐[�x�̓�����@�̂��߁A���ׂẴt���[���o�b�t�@�œ����ł��B
+			// 深度/ステンシルアタッチメントは、現在のGPUでの深度の動作方法のため、すべてのフレームバッファで同じです。
 			attachments[1] = depthStencil.view;
 
 			VkFramebufferCreateInfo frameBufferCI{};
 			frameBufferCI.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			// ���ׂẴt���[���o�b�t�@�͓��������_�[�p�X�ݒ���g�p���܂��B
+			// すべてのフレームバッファは同じレンダーパス設定を使用します。
 			frameBufferCI.renderPass = renderPass;
 			frameBufferCI.attachmentCount = static_cast<uint32_t>(attachments.size());
 			frameBufferCI.pAttachments = attachments.data();
 			frameBufferCI.width = width;
 			frameBufferCI.height = height;
 			frameBufferCI.layers = 1;
-			// �t���[���o�b�t�@���쐬���܂��B
+			// フレームバッファを作成します。
 			VK_CHECK_RESULT(vkCreateFramebuffer(device, &frameBufferCI, nullptr, &frameBuffers[i]));
 		}
 	}
 
-	// �����_�[�p�X�̐ݒ�
-	// �����_�[�p�X��Vulkan�̐V�����T�O�ł��B�����_�����O���Ɏg�p�����A�^�b�`�����g���L�q���A�A�^�b�`�����g�̈ˑ��֌W���������̃T�u�p�X���܂ނ��Ƃ��ł��܂��B
-	// ����ɂ��A�h���C�o�[�̓����_�����O���ǂ̂悤�ɂȂ邩�����O�ɒm�邱�Ƃ��ł��A���Ƀ^�C���x�[�X�̃����_���[�i�����̃T�u�p�X�����j�ł̍œK���̗ǂ��@��ƂȂ�܂��B
-	// �T�u�p�X�̈ˑ��֌W���g�p����ƁA�g�p�����A�^�b�`�����g�̈ÖٓI�ȃ��C�A�E�g�J�ڂ��ǉ�����邽�߁A������ϊ����邽�߂̖����I�ȃC���[�W�������o���A��ǉ�����K�v�͂���܂���B
-	// ���ӁF���N���X�̉��z�֐��̃I�[�o�[���C�h�ł���AVulkanExampleBase::prepare������Ăяo����܂��B
+	// レンダーパスの設定
+	// レンダーパスはVulkanの新しい概念です。レンダリング中に使用されるアタッチメントを記述し、アタッチメントの依存関係を持つ複数のサブパスを含むことができます。
+	// これにより、ドライバーはレンダリングがどのようになるかを事前に知ることができ、特にタイルベースのレンダラー（複数のサブパスを持つ）での最適化の良い機会となります。
+	// サブパスの依存関係を使用すると、使用されるアタッチメントの暗黙的なレイアウト遷移も追加されるため、それらを変換するための明示的なイメージメモリバリアを追加する必要はありません。
+	// 注意：基底クラスの仮想関数のオーバーライドであり、VulkanExampleBase::prepare内から呼び出されます。
 	void setupRenderPass()
 	{
-		// ���̃T���v���ł́A1�̃T�u�p�X�����P��̃����_�[�p�X���g�p���܂��B
+		// このサンプルでは、1つのサブパスを持つ単一のレンダーパスを使用します。
 
-		// ���̃����_�[�p�X�Ŏg�p�����A�^�b�`�����g�̋L�q�q�B
+		// このレンダーパスで使用されるアタッチメントの記述子。
 		std::array<VkAttachmentDescription, 2> attachments{};
 
-		// �J���[�A�^�b�`�����g
-		attachments[0].format = swapChain.colorFormat;                  // �X���b�v�`�F�[���őI�����ꂽ�J���[�t�H�[�}�b�g���g�p���܂��B
-		attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;                  // ���̃T���v���ł̓}���`�T���v�����O�͎g�p���܂���B
-		attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;             // �����_�[�p�X�̊J�n���ɂ��̃A�^�b�`�����g���N���A���܂��B
-		attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;           // �����_�[�p�X�I��������̓��e��ێ����܂��i�\���̂��߁j�B
-		attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  // �X�e���V���͎g�p���Ȃ��̂ŁA���[�h�͋C�ɂ��܂���B
-		attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // �X�g�A�����l�ł��B
-		attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;        // �����_�[�p�X�J�n���̃��C�A�E�g�B�������C�A�E�g�͏d�v�ł͂Ȃ��̂ŁAundefined���g�p���܂��B
-		attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;    // �����_�[�p�X�I�����ɃA�^�b�`�����g���J�ڂ��郌�C�A�E�g�B
-		// �J���[�o�b�t�@���X���b�v�`�F�[���ɒ񎦂��������߁APRESENT_KHR�ɑJ�ڂ��܂��B
-// �[�x�A�^�b�`�����g
-		attachments[1].format = depthFormat;                           // �K�؂Ȑ[�x�t�H�[�}�b�g���T���v�����N���X�őI������܂��B
+		// カラーアタッチメント
+		attachments[0].format = swapChain.colorFormat;                  // スワップチェーンで選択されたカラーフォーマットを使用します。
+		attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;                  // このサンプルではマルチサンプリングは使用しません。
+		attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;             // レンダーパスの開始時にこのアタッチメントをクリアします。
+		attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_STORE;           // レンダーパス終了後もその内容を保持します（表示のため）。
+		attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  // ステンシルは使用しないので、ロードは気にしません。
+		attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // ストアも同様です。
+		attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;        // レンダーパス開始時のレイアウト。初期レイアウトは重要ではないので、undefinedを使用します。
+		attachments[0].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;    // レンダーパス終了時にアタッチメントが遷移するレイアウト。
+		// カラーバッファをスワップチェーンに提示したいため、PRESENT_KHRに遷移します。
+// 深度アタッチメント
+		attachments[1].format = depthFormat;                           // 適切な深度フォーマットがサンプル基底クラスで選択されます。
 		attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
-		attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;             // �ŏ��̃T�u�p�X�̊J�n���ɐ[�x���N���A���܂��B
-		attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;       // �����_�[�p�X�I����ɐ[�x�͕s�v�ł��iDONT_CARE�̓p�t�H�[�}���X����ɂȂ���\��������܂��j�B
-		attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  // �X�e���V���Ȃ��B
-		attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // �X�e���V���Ȃ��B
-		attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;        // �����_�[�p�X�J�n���̃��C�A�E�g�B�������C�A�E�g�͏d�v�ł͂Ȃ��̂ŁAundefined���g�p���܂��B
-		attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; // �[�x/�X�e���V���A�^�b�`�����g�ɑJ�ڂ��܂��B
+		attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;             // 最初のサブパスの開始時に深度をクリアします。
+		attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;       // レンダーパス終了後に深度は不要です（DONT_CAREはパフォーマンス向上につながる可能性があります）。
+		attachments[1].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;  // ステンシルなし。
+		attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // ステンシルなし。
+		attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;        // レンダーパス開始時のレイアウト。初期レイアウトは重要ではないので、undefinedを使用します。
+		attachments[1].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; // 深度/ステンシルアタッチメントに遷移します。
 
-		// �A�^�b�`�����g�Q�Ƃ̐ݒ�
+		// アタッチメント参照の設定
 		VkAttachmentReference colorReference{};
-		colorReference.attachment = 0;                                   // �A�^�b�`�����g0�̓J���[�ł��B
-		colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // �T�u�p�X���ɃJ���[�Ƃ��Ďg�p�����A�^�b�`�����g���C�A�E�g�B
+		colorReference.attachment = 0;                                   // アタッチメント0はカラーです。
+		colorReference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // サブパス中にカラーとして使用されるアタッチメントレイアウト。
 
 		VkAttachmentReference depthReference{};
-		depthReference.attachment = 1;                                     // �A�^�b�`�����g1�͐[�x�ł��B
-		depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; // �T�u�p�X���ɐ[�x/�X�e���V���Ƃ��Ďg�p�����A�^�b�`�����g�B
+		depthReference.attachment = 1;                                     // アタッチメント1は深度です。
+		depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL; // サブパス中に深度/ステンシルとして使用されるアタッチメント。
 
-		// �P��̃T�u�p�X�Q�Ƃ̐ݒ�
+		// 単一のサブパス参照の設定
 		VkSubpassDescription subpassDescription{};
 		subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpassDescription.colorAttachmentCount = 1;                     // �T�u�p�X��1�̃J���[�A�^�b�`�����g���g�p���܂��B
-		subpassDescription.pColorAttachments = &colorReference;          // �X���b�g0�̃J���[�A�^�b�`�����g�ւ̎Q�ƁB
-		subpassDescription.pDepthStencilAttachment = &depthReference;    // �X���b�g1�̐[�x�A�^�b�`�����g�ւ̎Q�ƁB
-		subpassDescription.inputAttachmentCount = 0;                     // ���̓A�^�b�`�����g�́A�O�̃T�u�p�X�̓��e����T���v�����O���邽�߂Ɏg�p�ł��܂��B
-		subpassDescription.pInputAttachments = nullptr;                  // (���̃T���v���ł͓��̓A�^�b�`�����g�͎g�p���܂���)
-		subpassDescription.preserveAttachmentCount = 0;                  // �ێ��A�^�b�`�����g�́A�T�u�p�X�ԂŃA�^�b�`�����g�����[�v�i����ѕێ��j���邽�߂Ɏg�p�ł��܂��B
-		subpassDescription.pPreserveAttachments = nullptr;               // (���̃T���v���ł͕ێ��A�^�b�`�����g�͎g�p���܂���)
-		subpassDescription.pResolveAttachments = nullptr;                // �����A�^�b�`�����g�̓T�u�p�X�̍Ō�ɉ�������A�}���`�T���v�����O�ȂǂɎg�p�ł��܂��B
+		subpassDescription.colorAttachmentCount = 1;                     // サブパスは1つのカラーアタッチメントを使用します。
+		subpassDescription.pColorAttachments = &colorReference;          // スロット0のカラーアタッチメントへの参照。
+		subpassDescription.pDepthStencilAttachment = &depthReference;    // スロット1の深度アタッチメントへの参照。
+		subpassDescription.inputAttachmentCount = 0;                     // 入力アタッチメントは、前のサブパスの内容からサンプリングするために使用できます。
+		subpassDescription.pInputAttachments = nullptr;                  // (このサンプルでは入力アタッチメントは使用しません)
+		subpassDescription.preserveAttachmentCount = 0;                  // 保持アタッチメントは、サブパス間でアタッチメントをループ（および保持）するために使用できます。
+		subpassDescription.pPreserveAttachments = nullptr;               // (このサンプルでは保持アタッチメントは使用しません)
+		subpassDescription.pResolveAttachments = nullptr;                // 解決アタッチメントはサブパスの最後に解決され、マルチサンプリングなどに使用できます。
 
-		// �T�u�p�X�ˑ��֌W�̐ݒ�
-		// �����́A�A�^�b�`�����g�L�q�Ŏw�肳�ꂽ�ÖٓI�ȃA�^�b�`�����g���C�A�E�g�J�ڂ�ǉ����܂��B
-		// ���ۂ̎g�p���C�A�E�g�́A�A�^�b�`�����g�Q�ƂŎw�肳�ꂽ���C�A�E�g��ʂ��ĕێ�����܂��B
-		// �e�T�u�p�X�ˑ��֌W�́AsrcStageMask, dstStageMask, srcAccessMask, dstAccessMask�ɂ���ċL�q�����\�[�X�T�u�p�X�ƃf�X�e�B�l�[�V�����T�u�p�X�̊ԂɃ���������ю��s�̈ˑ��֌W�𓱓����܂��i������dependencyFlags���ݒ肳��܂��j�B
-		// ���ӁFVK_SUBPASS_EXTERNAL�́A���ۂ̃����_�[�p�X�̊O���Ŏ��s����邷�ׂẴR�}���h���Q�Ƃ�����ʂȒ萔�ł��B
+		// サブパス依存関係の設定
+		// これらは、アタッチメント記述で指定された暗黙的なアタッチメントレイアウト遷移を追加します。
+		// 実際の使用レイアウトは、アタッチメント参照で指定されたレイアウトを通じて保持されます。
+		// 各サブパス依存関係は、srcStageMask, dstStageMask, srcAccessMask, dstAccessMaskによって記述されるソースサブパスとデスティネーションサブパスの間にメモリおよび実行の依存関係を導入します（そしてdependencyFlagsが設定されます）。
+		// 注意：VK_SUBPASS_EXTERNALは、実際のレンダーパスの外部で実行されるすべてのコマンドを参照する特別な定数です。
 		std::array<VkSubpassDependency, 2> dependencies;
 
-		// �[�x����уJ���[�A�^�b�`�����g��final����initial�ւ̃��C�A�E�g�J�ڂ��s���܂��B
-		// �[�x�A�^�b�`�����g
+		// 深度およびカラーアタッチメントのfinalからinitialへのレイアウト遷移を行います。
+		// 深度アタッチメント
 		dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 		dependencies[0].dstSubpass = 0;
 		dependencies[0].srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
@@ -603,7 +603,7 @@ public:
 		dependencies[0].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 		dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 		dependencies[0].dependencyFlags = 0;
-		// �J���[�A�^�b�`�����g
+		// カラーアタッチメント
 		dependencies[1].srcSubpass = VK_SUBPASS_EXTERNAL;
 		dependencies[1].dstSubpass = 0;
 		dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -612,28 +612,28 @@ public:
 		dependencies[1].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
 		dependencies[1].dependencyFlags = 0;
 
-		// ���ۂ̃����_�[�p�X���쐬���܂��B
+		// 実際のレンダーパスを作成します。
 		VkRenderPassCreateInfo renderPassCI{};
 		renderPassCI.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-		renderPassCI.attachmentCount = static_cast<uint32_t>(attachments.size()); // ���̃����_�[�p�X�Ŏg�p�����A�^�b�`�����g�̐��B
-		renderPassCI.pAttachments = attachments.data();                           // �����_�[�p�X�Ŏg�p�����A�^�b�`�����g�̋L�q�B
-		renderPassCI.subpassCount = 1;                                           // ���̃T���v���ł�1�̃T�u�p�X�̂ݎg�p���܂��B
-		renderPassCI.pSubpasses = &subpassDescription;                           // ���̃T�u�p�X�̋L�q�B
-		renderPassCI.dependencyCount = static_cast<uint32_t>(dependencies.size()); // �T�u�p�X�ˑ��֌W�̐��B
-		renderPassCI.pDependencies = dependencies.data();                         // �����_�[�p�X�Ŏg�p�����T�u�p�X�ˑ��֌W�B
+		renderPassCI.attachmentCount = static_cast<uint32_t>(attachments.size()); // このレンダーパスで使用されるアタッチメントの数。
+		renderPassCI.pAttachments = attachments.data();                           // レンダーパスで使用されるアタッチメントの記述。
+		renderPassCI.subpassCount = 1;                                           // このサンプルでは1つのサブパスのみ使用します。
+		renderPassCI.pSubpasses = &subpassDescription;                           // そのサブパスの記述。
+		renderPassCI.dependencyCount = static_cast<uint32_t>(dependencies.size()); // サブパス依存関係の数。
+		renderPassCI.pDependencies = dependencies.data();                         // レンダーパスで使用されるサブパス依存関係。
 		VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassCI, nullptr, &renderPass));
 	}
 
-	// Vulkan�́ASPIR-V�ƌĂ΂�钆�ԃo�C�i���\������V�F�[�_�[�����[�h���܂��B
-	// �V�F�[�_�[�́A�Ⴆ��GLSL����Q��glslang�R���p�C�����g�p���ăI�t���C���ŃR���p�C������܂��B
-	// ���̊֐��́A���̂悤�ȃV�F�[�_�[���o�C�i���t�@�C�����烍�[�h���A�V�F�[�_�[���W���[���\���̂�Ԃ��܂��B
+	// Vulkanは、SPIR-Vと呼ばれる中間バイナリ表現からシェーダーをロードします。
+	// シェーダーは、例えばGLSLから参照glslangコンパイラを使用してオフラインでコンパイルされます。
+	// この関数は、そのようなシェーダーをバイナリファイルからロードし、シェーダーモジュール構造体を返します。
 	VkShaderModule loadSPIRVShader(std::string filename)
 	{
 		size_t shaderSize;
 		char* shaderCode{ nullptr };
 
 #if defined(__ANDROID__)
-		// ���k���ꂽ�A�Z�b�g����V�F�[�_�[�����[�h���܂��B
+		// 圧縮されたアセットからシェーダーをロードします。
 		AAsset* asset = AAssetManager_open(androidApp->activity->assetManager, filename.c_str(), AASSET_MODE_STREAMING);
 		assert(asset);
 		shaderSize = AAsset_getLength(asset);
@@ -649,7 +649,7 @@ public:
 		{
 			shaderSize = is.tellg();
 			is.seekg(0, std::ios::beg);
-			// �t�@�C���̓��e���o�b�t�@�ɃR�s�[���܂��B
+			// ファイルの内容をバッファにコピーします。
 			shaderCode = new char[shaderSize];
 			is.read(shaderCode, shaderSize);
 			is.close();
@@ -658,7 +658,7 @@ public:
 #endif
 		if (shaderCode)
 		{
-			// �p�C�v���C���쐬�Ɏg�p�����V�����V�F�[�_�[���W���[�����쐬���܂��B
+			// パイプライン作成に使用される新しいシェーダーモジュールを作成します。
 			VkShaderModuleCreateInfo shaderModuleCI{};
 			shaderModuleCI.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 			shaderModuleCI.codeSize = shaderSize;
@@ -680,27 +680,27 @@ public:
 
 	void createPipelines()
 	{
-		// ���̃T���v���Ŏg�p�����O���t�B�b�N�X�p�C�v���C�����쐬���܂��B
-		// Vulkan�̓����_�����O�p�C�v���C���̊T�O���g�p���ČŒ�X�e�[�g���J�v�Z�������AOpenGL�̕��G�ȃX�e�[�g�}�V����u�������܂��B
-		// �p�C�v���C����GPU��Ɋi�[����n�b�V��������邽�߁A�p�C�v���C���̕ύX�͔��ɍ����ł��B
-		// ���ӁF�p�C�v���C���ɒ��ڊ܂܂�Ȃ����I�ȃX�e�[�g���������܂����݂��܂��i�������A����炪�g�p�����Ƃ������͊܂܂�܂��j�B
+		// このサンプルで使用されるグラフィックスパイプラインを作成します。
+		// Vulkanはレンダリングパイプラインの概念を使用して固定ステートをカプセル化し、OpenGLの複雑なステートマシンを置き換えます。
+		// パイプラインはGPU上に格納されハッシュ化されるため、パイプラインの変更は非常に高速です。
+		// 注意：パイプラインに直接含まれない動的なステートがいくつかまだ存在します（ただし、それらが使用されるという情報は含まれます）。
 
 		VkGraphicsPipelineCreateInfo pipelineCI{};
 		pipelineCI.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		// ���̃p�C�v���C���Ɏg�p����郌�C�A�E�g�i�������C�A�E�g���g�p���镡���̃p�C�v���C���Ԃŋ��L�\�j�B
+		// このパイプラインに使用されるレイアウト（同じレイアウトを使用する複数のパイプライン間で共有可能）。
 		pipelineCI.layout = pipelineLayout;
-		// ���̃p�C�v���C�����A�^�b�`����郌���_�[�p�X�B
+		// このパイプラインがアタッチされるレンダーパス。
 		pipelineCI.renderPass = renderPass;
 
-		// �p�C�v���C�����\�����邳�܂��܂ȃX�e�[�g���\�z���܂��B
+		// パイプラインを構成するさまざまなステートを構築します。
 
-		// ���̓A�Z���u���X�e�[�g�́A�v���~�e�B�u���ǂ̂悤�ɑg�ݗ��Ă��邩���L�q���܂��B
-		// ���̃p�C�v���C���͒��_�f�[�^���g���C�A���O�����X�g�Ƃ��đg�ݗ��Ă܂��i�������A1�̃g���C�A���O�������g�p���܂���j�B
+		// 入力アセンブリステートは、プリミティブがどのように組み立てられるかを記述します。
+		// このパイプラインは頂点データをトライアングルリストとして組み立てます（ただし、1つのトライアングルしか使用しません）。
 		VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCI{};
 		inputAssemblyStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 		inputAssemblyStateCI.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
-		// ���X�^���C�[�[�V�����X�e�[�g
+		// ラスタライゼーションステート
 		VkPipelineRasterizationStateCreateInfo rasterizationStateCI{};
 		rasterizationStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 		rasterizationStateCI.polygonMode = VK_POLYGON_MODE_FILL;
@@ -711,8 +711,8 @@ public:
 		rasterizationStateCI.depthBiasEnable = VK_FALSE;
 		rasterizationStateCI.lineWidth = 1.0f;
 
-		// �J���[�u�����h�X�e�[�g�́A�i�g�p����Ă���ꍇ�j�u�����h�W�����ǂ̂悤�Ɍv�Z����邩���L�q���܂��B
-		// �i�u�����f�B���O���g�p����Ă��Ȃ��Ă��j�J���[�A�^�b�`�����g���Ƃ�1�̃u�����h�A�^�b�`�����g�X�e�[�g���K�v�ł��B
+		// カラーブレンドステートは、（使用されている場合）ブレンド係数がどのように計算されるかを記述します。
+		// （ブレンディングが使用されていなくても）カラーアタッチメントごとに1つのブレンドアタッチメントステートが必要です。
 		VkPipelineColorBlendAttachmentState blendAttachmentState{};
 		blendAttachmentState.colorWriteMask = 0xf;
 		blendAttachmentState.blendEnable = VK_FALSE;
@@ -721,17 +721,17 @@ public:
 		colorBlendStateCI.attachmentCount = 1;
 		colorBlendStateCI.pAttachments = &blendAttachmentState;
 
-		// �r���[�|�[�g�X�e�[�g�́A���̃p�C�v���C���Ŏg�p�����r���[�|�[�g�ƃV�U�[�̐���ݒ肵�܂��B
-		// ���ӁF����͎��ۂɂ͓��I�X�e�[�g�ɂ���ď㏑������܂��i���L�Q�Ɓj�B
+		// ビューポートステートは、このパイプラインで使用されるビューポートとシザーの数を設定します。
+		// 注意：これは実際には動的ステートによって上書きされます（下記参照）。
 		VkPipelineViewportStateCreateInfo viewportStateCI{};
 		viewportStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 		viewportStateCI.viewportCount = 1;
 		viewportStateCI.scissorCount = 1;
 
-		// ���I�X�e�[�g�̗L����
-		// �قƂ�ǂ̃X�e�[�g�̓p�C�v���C���ɏĂ��t�����܂����A�R�}���h�o�b�t�@���ŕύX�ł��铮�I�ȃX�e�[�g������������܂��B
-		// ������ύX�ł���悤�ɂ���ɂ́A���̃p�C�v���C���łǂ̓��I�X�e�[�g���ύX����邩���w�肷��K�v������܂��B���ۂ̃X�e�[�g�͌�ŃR�}���h�o�b�t�@�Őݒ肳��܂��B
-		// ���̃T���v���ł́A�r���[�|�[�g�ƃV�U�[�𓮓I�X�e�[�g���g�p���Đݒ肵�܂��B
+		// 動的ステートの有効化
+		// ほとんどのステートはパイプラインに焼き付けられますが、コマンドバッファ内で変更できる動的なステートもいくつかあります。
+		// これらを変更できるようにするには、このパイプラインでどの動的ステートが変更されるかを指定する必要があります。実際のステートは後でコマンドバッファで設定されます。
+		// このサンプルでは、ビューポートとシザーを動的ステートを使用して設定します。
 		std::vector<VkDynamicState> dynamicStateEnables;
 		dynamicStateEnables.push_back(VK_DYNAMIC_STATE_VIEWPORT);
 		dynamicStateEnables.push_back(VK_DYNAMIC_STATE_SCISSOR);
@@ -740,8 +740,8 @@ public:
 		dynamicStateCI.pDynamicStates = dynamicStateEnables.data();
 		dynamicStateCI.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
 
-		// �[�x����уX�e���V���̔�r�ƃe�X�g������܂ށA�[�x����уX�e���V���X�e�[�g�B
-		// �[�x�e�X�g�݂̂��g�p���A�[�x�e�X�g�Ə������݂�L���ɂ��Aless or equal�Ŕ�r���܂��B
+		// 深度およびステンシルの比較とテスト操作を含む、深度およびステンシルステート。
+		// 深度テストのみを使用し、深度テストと書き込みを有効にし、less or equalで比較します。
 		VkPipelineDepthStencilStateCreateInfo depthStencilStateCI{};
 		depthStencilStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
 		depthStencilStateCI.depthTestEnable = VK_TRUE;
@@ -754,42 +754,42 @@ public:
 		depthStencilStateCI.stencilTestEnable = VK_FALSE;
 		depthStencilStateCI.front = depthStencilStateCI.back;
 
-		// �}���`�T���v�����O�X�e�[�g
-		// ���̃T���v���ł̓}���`�T���v�����O�i�A���`�G�C���A�V���O�p�j���g�p���܂��񂪁A�X�e�[�g�͐ݒ肵�ăp�C�v���C���ɓn���K�v������܂��B
+		// マルチサンプリングステート
+		// このサンプルではマルチサンプリング（アンチエイリアシング用）を使用しませんが、ステートは設定してパイプラインに渡す必要があります。
 		VkPipelineMultisampleStateCreateInfo multisampleStateCI{};
 		multisampleStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 		multisampleStateCI.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 		multisampleStateCI.pSampleMask = nullptr;
 
-		// ���_���͂̋L�q
-		// �p�C�v���C���̒��_���̓p�����[�^���w�肵�܂��B
+		// 頂点入力の記述
+		// パイプラインの頂点入力パラメータを指定します。
 
-		// ���_���̓o�C���f�B���O
-		// ���̃T���v���ł́A�o�C���f�B���O�|�C���g0�ŒP��̒��_���̓o�C���f�B���O���g�p���܂��ivkCmdBindVertexBuffers���Q�Ɓj�B
+		// 頂点入力バインディング
+		// このサンプルでは、バインディングポイント0で単一の頂点入力バインディングを使用します（vkCmdBindVertexBuffersを参照）。
 		VkVertexInputBindingDescription vertexInputBinding{};
 		vertexInputBinding.binding = 0;
 		vertexInputBinding.stride = sizeof(Vertex);
 		vertexInputBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-		// ���͑����o�C���f�B���O�́A�V�F�[�_�[�����̈ʒu�ƃ��������C�A�E�g���L�q���܂��B
+		// 入力属性バインディングは、シェーダー属性の位置とメモリレイアウトを記述します。
 		std::array<VkVertexInputAttributeDescription, 2> vertexInputAttributs;
-		// �����͎��̃V�F�[�_�[���C�A�E�g�Ɉ�v���܂��itriangle.vert���Q�Ɓj�F
+		// これらは次のシェーダーレイアウトに一致します（triangle.vertを参照）：
 		//	layout (location = 0) in vec3 inPos;
 		//	layout (location = 1) in vec3 inColor;
-		// �����ʒu 0: �ʒu
+		// 属性位置 0: 位置
 		vertexInputAttributs[0].binding = 0;
 		vertexInputAttributs[0].location = 0;
-		// �ʒu������3��32�r�b�g�����t�����������_���iSFLOAT�j�ł��iR32 G32 B32�j�B
+		// 位置属性は3つの32ビット符号付き浮動小数点数（SFLOAT）です（R32 G32 B32）。
 		vertexInputAttributs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
 		vertexInputAttributs[0].offset = offsetof(Vertex, position);
-		// �����ʒu 1: �F
+		// 属性位置 1: 色
 		vertexInputAttributs[1].binding = 0;
 		vertexInputAttributs[1].location = 1;
-		// �F������3��32�r�b�g�����t�����������_���iSFLOAT�j�ł��iR32 G32 B32�j�B
+		// 色属性は3つの32ビット符号付き浮動小数点数（SFLOAT）です（R32 G32 B32）。
 		vertexInputAttributs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
 		vertexInputAttributs[1].offset = offsetof(Vertex, color);
 
-		// �p�C�v���C���쐬�Ɏg�p����钸�_���̓X�e�[�g�B
+		// パイプライン作成に使用される頂点入力ステート。
 		VkPipelineVertexInputStateCreateInfo vertexInputStateCI{};
 		vertexInputStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 		vertexInputStateCI.vertexBindingDescriptionCount = 1;
@@ -797,34 +797,34 @@ public:
 		vertexInputStateCI.vertexAttributeDescriptionCount = 2;
 		vertexInputStateCI.pVertexAttributeDescriptions = vertexInputAttributs.data();
 
-		// �V�F�[�_�[
+		// シェーダー
 		std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
 
-		// ���_�V�F�[�_�[
+		// 頂点シェーダー
 		shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		// ���̃V�F�[�_�[�̃p�C�v���C���X�e�[�W��ݒ肵�܂��B
+		// このシェーダーのパイプラインステージを設定します。
 		shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-		// �o�C�i����SPIR-V�V�F�[�_�[�����[�h���܂��B
+		// バイナリのSPIR-Vシェーダーをロードします。
 		shaderStages[0].module = loadSPIRVShader(getShadersPath() + "triangle/triangle.vert.spv");
-		// �V�F�[�_�[�̃��C���G���g���[�|�C���g�B
+		// シェーダーのメインエントリーポイント。
 		shaderStages[0].pName = "main";
 		assert(shaderStages[0].module != VK_NULL_HANDLE);
 
-		// �t���O�����g�V�F�[�_�[
+		// フラグメントシェーダー
 		shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		// ���̃V�F�[�_�[�̃p�C�v���C���X�e�[�W��ݒ肵�܂��B
+		// このシェーダーのパイプラインステージを設定します。
 		shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-		// �o�C�i����SPIR-V�V�F�[�_�[�����[�h���܂��B
+		// バイナリのSPIR-Vシェーダーをロードします。
 		shaderStages[1].module = loadSPIRVShader(getShadersPath() + "triangle/triangle.frag.spv");
-		// �V�F�[�_�[�̃��C���G���g���[�|�C���g�B
+		// シェーダーのメインエントリーポイント。
 		shaderStages[1].pName = "main";
 		assert(shaderStages[1].module != VK_NULL_HANDLE);
 
-		// �p�C�v���C���V�F�[�_�[�X�e�[�W����ݒ肵�܂��B
+		// パイプラインシェーダーステージ情報を設定します。
 		pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
 		pipelineCI.pStages = shaderStages.data();
 
-		// �p�C�v���C���X�e�[�g���p�C�v���C���쐬���\���̂Ɋ��蓖�Ă܂��B
+		// パイプラインステートをパイプライン作成情報構造体に割り当てます。
 		pipelineCI.pVertexInputState = &vertexInputStateCI;
 		pipelineCI.pInputAssemblyState = &inputAssemblyStateCI;
 		pipelineCI.pRasterizationState = &rasterizationStateCI;
@@ -834,21 +834,21 @@ public:
 		pipelineCI.pDepthStencilState = &depthStencilStateCI;
 		pipelineCI.pDynamicState = &dynamicStateCI;
 
-		// �w�肳�ꂽ�X�e�[�g���g�p���ă����_�����O�p�C�v���C�����쐬���܂��B
+		// 指定されたステートを使用してレンダリングパイプラインを作成します。
 		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCI, nullptr, &pipeline));
 
-		// �O���t�B�b�N�X�p�C�v���C�����쐬�����ƁA�V�F�[�_�[���W���[���͕s�v�ɂȂ�܂��B
+		// グラフィックスパイプラインが作成されると、シェーダーモジュールは不要になります。
 		vkDestroyShaderModule(device, shaderStages[0].module, nullptr);
 		vkDestroyShaderModule(device, shaderStages[1].module, nullptr);
 	}
 
 	void createUniformBuffers()
 	{
-		// �V�F�[�_�[���j�t�H�[�����܂ރt���[�����Ƃ̃��j�t�H�[���o�b�t�@�u���b�N�������E���������܂��B
-		// OpenGL�̂悤�ȒP��̃��j�t�H�[����Vulkan�ɂ͂��͂⑶�݂��܂���B���ׂẴV�F�[�_�[���j�t�H�[���̓��j�t�H�[���o�b�t�@�u���b�N����ēn����܂��B
+		// シェーダーユニフォームを含むフレームごとのユニフォームバッファブロックを準備・初期化します。
+		// OpenGLのような単一のユニフォームはVulkanにはもはや存在しません。すべてのシェーダーユニフォームはユニフォームバッファブロックを介して渡されます。
 		VkMemoryRequirements memReqs;
 
-		// ���_�V�F�[�_�[�̃��j�t�H�[���o�b�t�@�u���b�N
+		// 頂点シェーダーのユニフォームバッファブロック
 		VkBufferCreateInfo bufferInfo{};
 		VkMemoryAllocateInfo allocInfo{};
 		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -858,25 +858,25 @@ public:
 
 		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		bufferInfo.size = sizeof(ShaderData);
-		// ���̃o�b�t�@�̓��j�t�H�[���o�b�t�@�Ƃ��Ďg�p����܂��B
+		// このバッファはユニフォームバッファとして使用されます。
 		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
-		// �o�b�t�@���쐬���܂��B
+		// バッファを作成します。
 		for (uint32_t i = 0; i < MAX_CONCURRENT_FRAMES; i++) {
 			VK_CHECK_RESULT(vkCreateBuffer(device, &bufferInfo, nullptr, &uniformBuffers[i].buffer));
-			// �T�C�Y�A�A���C�����g�A�������^�C�v���܂ރ������v�����擾���܂��B
+			// サイズ、アライメント、メモリタイプを含むメモリ要件を取得します。
 			vkGetBufferMemoryRequirements(device, uniformBuffers[i].buffer, &memReqs);
 			allocInfo.allocationSize = memReqs.size;
-			// �z�X�g���̃������A�N�Z�X���T�|�[�g���郁�����^�C�v�̃C���f�b�N�X���擾���܂��B
-			// �قƂ�ǂ̎����͕����̃������^�C�v��񋟂��Ă���A�����������蓖�Ă邽�߂ɐ��������̂�I�����邱�Ƃ��d�v�ł��B
-			// �܂��A�o�b�t�@���z�X�g�R�q�[�����g�ł��邱�Ƃ�]�݂܂��B��������΁A�X�V�̂��тɃt���b�V���i�܂��͓����j����K�v������܂���B
-			// ���ӁF����̓p�t�H�[�}���X�ɉe����^����\�������邽�߁A����I�Ƀo�b�t�@���X�V������ۂ̃A�v���P�[�V�����ł͍s�������Ȃ���������܂���B
+			// ホスト可視のメモリアクセスをサポートするメモリタイプのインデックスを取得します。
+			// ほとんどの実装は複数のメモリタイプを提供しており、メモリを割り当てるために正しいものを選択することが重要です。
+			// また、バッファがホストコヒーレントであることを望みます。そうすれば、更新のたびにフラッシュ（または同期）する必要がありません。
+			// 注意：これはパフォーマンスに影響を与える可能性があるため、定期的にバッファを更新する実際のアプリケーションでは行いたくないかもしれません。
 			allocInfo.memoryTypeIndex = getMemoryTypeIndex(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-			// ���j�t�H�[���o�b�t�@�̂��߂̃����������蓖�Ă܂��B
+			// ユニフォームバッファのためのメモリを割り当てます。
 			VK_CHECK_RESULT(vkAllocateMemory(device, &allocInfo, nullptr, &(uniformBuffers[i].memory)));
-			// ���������o�b�t�@�Ƀo�C���h���܂��B
+			// メモリをバッファにバインドします。
 			VK_CHECK_RESULT(vkBindBufferMemory(device, uniformBuffers[i].buffer, uniformBuffers[i].memory, 0));
-			// �o�b�t�@����x�}�b�v���Ă������ƂŁA�ēx�}�b�v���邱�ƂȂ��X�V�ł��܂��B
+			// バッファを一度マップしておくことで、再度マップすることなく更新できます。
 			VK_CHECK_RESULT(vkMapMemory(device, uniformBuffers[i].memory, 0, sizeof(ShaderData), 0, (void**)&uniformBuffers[i].mapped));
 		}
 
@@ -901,12 +901,12 @@ public:
 		if (!prepared)
 			return;
 
-		// �t�F���X���g�p���āA�R�}���h�o�b�t�@���ēx�g�p����O�ɂ��̎��s����������̂�҂��܂��B
+		// フェンスを使用して、コマンドバッファを再度使用する前にその実行が完了するのを待ちます。
 		vkWaitForFences(device, 1, &waitFences[currentFrame], VK_TRUE, UINT64_MAX);
 		VK_CHECK_RESULT(vkResetFences(device, 1, &waitFences[currentFrame]));
 
-		// �������玟�̃X���b�v�`�F�[���C���[�W���擾���܂��B
-		// �����͔C�ӂ̏����ŃC���[�W��Ԃ����Ƃ��ł��邽�߁Aacquire�֐����g�p����K�v������A�P�ɃC���[�W/imageIndex�������Ń��[�v���邱�Ƃ͂ł��܂���B
+		// 実装から次のスワップチェーンイメージを取得します。
+		// 実装は任意の順序でイメージを返すことができるため、acquire関数を使用する必要があり、単にイメージ/imageIndexを自分でループすることはできません。
 		uint32_t imageIndex;
 		VkResult result = vkAcquireNextImageKHR(device, swapChain.swapChain, UINT64_MAX, presentCompleteSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -917,28 +917,28 @@ public:
 			throw "Could not acquire the next swap chain image!";
 		}
 
-		// ���̃t���[���̂��߂Ƀ��j�t�H�[���o�b�t�@���X�V���܂��B
+		// 次のフレームのためにユニフォームバッファを更新します。
 		ShaderData shaderData{};
 		shaderData.projectionMatrix = camera.matrices.perspective;
 		shaderData.viewMatrix = camera.matrices.view;
 		shaderData.modelMatrix = glm::mat4(1.0f);
 
-		// ���݂̍s������݂̃t���[���̃��j�t�H�[���o�b�t�@�ɃR�s�[���܂��B
-		// ���ӁF���j�t�H�[���o�b�t�@�Ƀz�X�g�R�q�[�����g�ȃ������^�C�v��v���������߁A�������݂͑�����GPU�ɉ��ɂȂ�܂��B
+		// 現在の行列を現在のフレームのユニフォームバッファにコピーします。
+		// 注意：ユニフォームバッファにホストコヒーレントなメモリタイプを要求したため、書き込みは即座にGPUに可視になります。
 		memcpy(uniformBuffers[currentFrame].mapped, &shaderData, sizeof(ShaderData));
 
-		// �R�}���h�o�b�t�@���\�z���܂��B
-		// OpenGL�Ƃ͈قȂ�A���ׂẴ����_�����O�R�}���h�̓R�}���h�o�b�t�@�ɋL�^����A���̌�L���[�ɃT�u�~�b�g����܂��B
-		// ����ɂ��A�ʂ̃X���b�h�Ŏ��O�ɍ�Ƃ𐶐��ł��܂��B
-		// �i���̃T���v���̂悤�ȁj��{�I�ȃR�}���h�o�b�t�@�ł́A�L�^�����ɍ����Ȃ��߁A������I�t���[�h����K�v�͂���܂���B
+		// コマンドバッファを構築します。
+		// OpenGLとは異なり、すべてのレンダリングコマンドはコマンドバッファに記録され、その後キューにサブミットされます。
+		// これにより、別のスレッドで事前に作業を生成できます。
+		// （このサンプルのような）基本的なコマンドバッファでは、記録が非常に高速なため、これをオフロードする必要はありません。
 
 		vkResetCommandBuffer(commandBuffers[currentFrame], 0);
 
 		VkCommandBufferBeginInfo cmdBufInfo{};
 		cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
-		// loadOp��clear�ɐݒ肳��Ă��邷�ׂẴt���[���o�b�t�@�A�^�b�`�����g�̃N���A�l��ݒ肵�܂��B
-		// 2�̃A�^�b�`�����g�i�J���[�Ɛ[�x�j���g�p���A�����̓T�u�p�X�̊J�n���ɃN���A����邽�߁A�����̃N���A�l��ݒ肷��K�v������܂��B
+		// loadOpがclearに設定されているすべてのフレームバッファアタッチメントのクリア値を設定します。
+		// 2つのアタッチメント（カラーと深度）を使用し、これらはサブパスの開始時にクリアされるため、両方のクリア値を設定する必要があります。
 		VkClearValue clearValues[2];
 		clearValues[0].color = { { 0.0f, 0.0f, 0.2f, 1.0f } };
 		clearValues[1].depthStencil = { 1.0f, 0 };
@@ -958,63 +958,63 @@ public:
 		const VkCommandBuffer commandBuffer = commandBuffers[currentFrame];
 		VK_CHECK_RESULT(vkBeginCommandBuffer(commandBuffer, &cmdBufInfo));
 
-		// ���N���X�ɂ���ăf�t�H���g�̃����_�[�p�X�ݒ�Ŏw�肳�ꂽ�ŏ��̃T�u�p�X���J�n���܂��B
-		// ����ɂ��A�J���[�Ɛ[�x�̃A�^�b�`�����g���N���A����܂��B
+		// 基底クラスによってデフォルトのレンダーパス設定で指定された最初のサブパスを開始します。
+		// これにより、カラーと深度のアタッチメントがクリアされます。
 		vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-		// ���I�ȃr���[�|�[�g�X�e�[�g���X�V���܂��B
+		// 動的なビューポートステートを更新します。
 		VkViewport viewport{};
 		viewport.height = (float)height;
 		viewport.width = (float)width;
 		viewport.minDepth = (float)0.0f;
 		viewport.maxDepth = (float)1.0f;
 		vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-		// ���I�ȃV�U�[�X�e�[�g���X�V���܂��B
+		// 動的なシザーステートを更新します。
 		VkRect2D scissor{};
 		scissor.extent.width = width;
 		scissor.extent.height = height;
 		scissor.offset.x = 0;
 		scissor.offset.y = 0;
 		vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-		// ���݂̃t���[���̃��j�t�H�[���o�b�t�@�̃f�B�X�N���v�^�Z�b�g���o�C���h���A���̕`��ŃV�F�[�_�[�����̃o�b�t�@�̃f�[�^���g�p����悤�ɂ��܂��B
+		// 現在のフレームのユニフォームバッファのディスクリプタセットをバインドし、この描画でシェーダーがそのバッファのデータを使用するようにします。
 		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &uniformBuffers[currentFrame].descriptorSet, 0, nullptr);
-		// �����_�����O�p�C�v���C�����o�C���h���܂��B
-		// �p�C�v���C���i�X�e�[�g�I�u�W�F�N�g�j�ɂ̓����_�����O�p�C�v���C���̂��ׂẴX�e�[�g���܂܂�Ă���A������o�C���h����ƃp�C�v���C���쐬���Ɏw�肳�ꂽ���ׂẴX�e�[�g���ݒ肳��܂��B
+		// レンダリングパイプラインをバインドします。
+		// パイプライン（ステートオブジェクト）にはレンダリングパイプラインのすべてのステートが含まれており、これをバインドするとパイプライン作成時に指定されたすべてのステートが設定されます。
 		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-		// �O�p�`�̒��_�o�b�t�@�i�ʒu�ƐF���܂ށj���o�C���h���܂��B
+		// 三角形の頂点バッファ（位置と色を含む）をバインドします。
 		VkDeviceSize offsets[1]{ 0 };
 		vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertices.buffer, offsets);
-		// �O�p�`�̃C���f�b�N�X�o�b�t�@���o�C���h���܂��B
+		// 三角形のインデックスバッファをバインドします。
 		vkCmdBindIndexBuffer(commandBuffer, indices.buffer, 0, VK_INDEX_TYPE_UINT32);
-		// �C���f�b�N�X�t���O�p�`��`�悵�܂��B
+		// インデックス付き三角形を描画します。
 		vkCmdDrawIndexed(commandBuffer, indices.count, 1, 0, 0, 1);
 		vkCmdEndRenderPass(commandBuffer);
-		// �����_�[�p�X���I������ƁA�t���[���o�b�t�@�̃J���[�A�^�b�`�����g���E�B���h�E�V�X�e���ɒ񎦂��邽�߂�VK_IMAGE_LAYOUT_PRESENT_SRC_KHR�ɑJ�ڂ�����Öق̃o���A���ǉ�����܂��B
+		// レンダーパスを終了すると、フレームバッファのカラーアタッチメントをウィンドウシステムに提示するためにVK_IMAGE_LAYOUT_PRESENT_SRC_KHRに遷移させる暗黙のバリアが追加されます。
 		VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
 
-		// �R�}���h�o�b�t�@���O���t�B�b�N�X�L���[�ɃT�u�~�b�g���܂��B
+		// コマンドバッファをグラフィックスキューにサブミットします。
 
-		// �L���[�̃T�u�~�b�V�������ipWaitSemaphores����āj�ҋ@����p�C�v���C���X�e�[�W�B
+		// キューのサブミッションが（pWaitSemaphoresを介して）待機するパイプラインステージ。
 		VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		// submit info�\���̂́A�R�}���h�o�b�t�@�̃L���[�T�u�~�b�V�����o�b�`���w�肵�܂��B
+		// submit info構造体は、コマンドバッファのキューサブミッションバッチを指定します。
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.pWaitDstStageMask = &waitStageMask;       // �Z�}�t�H�̑ҋ@����������p�C�v���C���X�e�[�W�̃��X�g�ւ̃|�C���^�B
-		submitInfo.pCommandBuffers = &commandBuffer;		// ���̃o�b�`�i�T�u�~�b�V�����j�Ŏ��s����R�}���h�o�b�t�@�B
-		submitInfo.commandBufferCount = 1;                   // �P��̃R�}���h�o�b�t�@���T�u�~�b�g���܂��B
+		submitInfo.pWaitDstStageMask = &waitStageMask;       // セマフォの待機が発生するパイプラインステージのリストへのポインタ。
+		submitInfo.pCommandBuffers = &commandBuffer;		// このバッチ（サブミッション）で実行するコマンドバッファ。
+		submitInfo.commandBufferCount = 1;                   // 単一のコマンドバッファをサブミットします。
 
-		// �T�u�~�b�g���ꂽ�R�}���h�o�b�t�@�����s���J�n����O�ɑҋ@����Z�}�t�H�B
+		// サブミットされたコマンドバッファが実行を開始する前に待機するセマフォ。
 		submitInfo.pWaitSemaphores = &presentCompleteSemaphores[currentFrame];
 		submitInfo.waitSemaphoreCount = 1;
-		// �R�}���h�o�b�t�@�����������Ƃ��ɃV�O�i�������Z�}�t�H�B
+		// コマンドバッファが完了したときにシグナルされるセマフォ。
 		submitInfo.pSignalSemaphores = &renderCompleteSemaphores[currentFrame];
 		submitInfo.signalSemaphoreCount = 1;
 
-		// �ҋ@�t�F���X��n���ăO���t�B�b�N�X�L���[�ɃT�u�~�b�g���܂��B
+		// 待機フェンスを渡してグラフィックスキューにサブミットします。
 		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, waitFences[currentFrame]));
 
-		// ���݂̃t���[���o�b�t�@���X���b�v�`�F�[���ɒ񎦂��܂��B
-		// �R�}���h�o�b�t�@�̃T�u�~�b�V�����ɂ���ăV�O�i�����ꂽ�Z�}�t�H���A�X���b�v�`�F�[���񎦂̑ҋ@�Z�}�t�H�Ƃ��ēn���܂��B
-		// ����ɂ��A���ׂẴR�}���h���T�u�~�b�g�����܂ŁA�C���[�W���E�B���h�E�V�X�e���ɒ񎦂���Ȃ����Ƃ��ۏ؂���܂��B
+		// 現在のフレームバッファをスワップチェーンに提示します。
+		// コマンドバッファのサブミッションによってシグナルされたセマフォを、スワップチェーン提示の待機セマフォとして渡します。
+		// これにより、すべてのコマンドがサブミットされるまで、イメージがウィンドウシステムに提示されないことが保証されます。
 
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -1032,16 +1032,16 @@ public:
 			throw "Could not present the image to the swap chain!";
 		}
 
-		// �ő哯�����s�t���[�����Ɋ�Â��āA���Ƀ����_�����O����t���[����I�����܂��B
+		// 最大同時実行フレーム数に基づいて、次にレンダリングするフレームを選択します。
 		currentFrame = (currentFrame + 1) % MAX_CONCURRENT_FRAMES;
 	}
 };
 
-// OS�ŗL�̃��C���G���g���[�|�C���g
-// �R�[�h�x�[�X�̂قƂ�ǂ́A�T�|�[�g����Ă��邳�܂��܂ȃI�y���[�e�B���O�V�X�e���ŋ��L����Ă��܂����A���b�Z�[�W�����Ȃǂ͈قȂ�܂��B
+// OS固有のメインエントリーポイント
+// コードベースのほとんどは、サポートされているさまざまなオペレーティングシステムで共有されていますが、メッセージ処理などは異なります。
 
 #if defined(_WIN32)
-// Windows�̃G���g���[�|�C���g
+// Windowsのエントリーポイント
 VulkanExample* vulkanExample;
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -1064,7 +1064,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR pCmdLin
 }
 
 #elif defined(__ANDROID__)
-// Android�̃G���g���[�|�C���g
+// Androidのエントリーポイント
 VulkanExample* vulkanExample;
 void android_main(android_app* state)
 {
@@ -1078,8 +1078,8 @@ void android_main(android_app* state)
 }
 #elif defined(_DIRECT2DISPLAY)
 
-// Direct to display wsi ���g�p���� Linux �̃G���g���[�|�C���g
-// Direct to Displays (D2D) �͑g�ݍ��݃v���b�g�t�H�[���Ŏg�p����܂��B
+// Direct to display wsi を使用した Linux のエントリーポイント
+// Direct to Displays (D2D) は組み込みプラットフォームで使用されます。
 VulkanExample* vulkanExample;
 static void handleEvent()
 {
@@ -1129,7 +1129,7 @@ int main(const int argc, const char* argv[])
 }
 #elif defined(__linux__) || defined(__FreeBSD__)
 
-// Linux�̃G���g���[�|�C���g
+// Linuxのエントリーポイント
 VulkanExample* vulkanExample;
 #if defined(VK_USE_PLATFORM_XCB_KHR)
 static void handleEvent(const xcb_generic_event_t* event)
