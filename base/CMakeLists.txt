@@ -16,6 +16,10 @@ set(KTX_SOURCES
     ${KTX_DIR}/lib/memstream.c
     ${KTX_DIR}/lib/filestream.c)
 
+foreach(C_SOURCE ${KTX_SOURCES})
+    set_source_files_properties(${C_SOURCE} PROPERTIES LANGUAGE C)
+endforeach()
+
 add_library(base STATIC ${BASE_SRC} ${KTX_SOURCES})
 
 target_include_directories(base PUBLIC
