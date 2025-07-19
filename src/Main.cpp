@@ -69,7 +69,7 @@ public:
 		}
 	}
 
-	void buildCommandBuffers()
+	void buildCommandBuffers() override
 	{
 		VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
 
