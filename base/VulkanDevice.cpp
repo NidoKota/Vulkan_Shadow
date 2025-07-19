@@ -1,7 +1,7 @@
 /*
- * Vulkan device class
- * 
- * Encapsulates a physical Vulkan device and its logical representation
+ * Vulkanデバイスクラス
+ *
+ * 物理Vulkanデバイスとその論理表現をカプセル化します
  *
  * Copyright (C) 2016-2024 by Sascha Willems - www.saschawillems.de
  *
@@ -9,581 +9,581 @@
  */
 
 #if (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK) || defined(VK_USE_PLATFORM_METAL_EXT))
-// SRS - Enable beta extensions and make VK_KHR_portability_subset visible
+// SRS - ベータ拡張を有効にし、VK_KHR_portability_subsetを可視にする
 #define VK_ENABLE_BETA_EXTENSIONS
 #endif
 #include <VulkanDevice.h>
 #include <unordered_set>
 
 namespace vks
-{	
-	/**
-	* Default constructor
-	*
-	* @param physicalDevice Physical device that is to be used
-	*/
-	VulkanDevice::VulkanDevice(VkPhysicalDevice physicalDevice)
-	{
-		assert(physicalDevice);
-		this->physicalDevice = physicalDevice;
+{
+    /**
+    * デフォルトコンストラクタ
+    *
+    * @param physicalDevice 使用される物理デバイス
+    */
+    VulkanDevice::VulkanDevice(VkPhysicalDevice physicalDevice)
+    {
+        assert(physicalDevice);
+        this->physicalDevice = physicalDevice;
 
-		// Store Properties features, limits and properties of the physical device for later use
-		// Device properties also contain limits and sparse properties
-		vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-		// Features should be checked by the examples before using them
-		vkGetPhysicalDeviceFeatures(physicalDevice, &features);
-		// Memory properties are used regularly for creating all kinds of buffers
-		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
-		// Queue family properties, used for setting up requested queues upon device creation
-		uint32_t queueFamilyCount;
-		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
-		assert(queueFamilyCount > 0);
-		queueFamilyProperties.resize(queueFamilyCount);
-		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
+        // 物理デバイスのプロパティ、機能、制限を後で使用するために保存する
+        // デバイスプロパティには、制限（limits）とスパースプロパティも含まれる
+        vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+        // 機能（features）は、使用する前にサンプル側でチェックされるべき
+        vkGetPhysicalDeviceFeatures(physicalDevice, &features);
+        // メモリプロパティは、あらゆる種類のバッファを作成するために定期的に使用される
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+        // キューファミリープロパティ。デバイス作成時に要求されたキューを設定するために使用される
+        uint32_t queueFamilyCount;
+        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+        assert(queueFamilyCount > 0);
+        queueFamilyProperties.resize(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
 
-		// Get list of supported extensions
-		uint32_t extCount = 0;
-		vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCount, nullptr);
-		if (extCount > 0)
-		{
-			std::vector<VkExtensionProperties> extensions(extCount);
-			if (vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
-			{
-				for (auto& ext : extensions)
-				{
-					supportedExtensions.push_back(ext.extensionName);
-				}
-			}
-		}
-	}
+        // サポートされている拡張機能のリストを取得する
+        uint32_t extCount = 0;
+        vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCount, nullptr);
+        if (extCount > 0)
+        {
+            std::vector<VkExtensionProperties> extensions(extCount);
+            if (vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
+            {
+                for (auto& ext : extensions)
+                {
+                    supportedExtensions.push_back(ext.extensionName);
+                }
+            }
+        }
+    }
 
-	/** 
-	* Default destructor
-	*
-	* @note Frees the logical device
-	*/
-	VulkanDevice::~VulkanDevice()
-	{
-		if (commandPool)
-		{
-			vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
-		}
-		if (logicalDevice)
-		{
-			vkDestroyDevice(logicalDevice, nullptr);
-		}
-	}
+    /**
+    * デフォルトデストラクタ
+    *
+    * @note 論理デバイスを解放します
+    */
+    VulkanDevice::~VulkanDevice()
+    {
+        if (commandPool)
+        {
+            vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
+        }
+        if (logicalDevice)
+        {
+            vkDestroyDevice(logicalDevice, nullptr);
+        }
+    }
 
-	/**
-	* Get the index of a memory type that has all the requested property bits set
-	*
-	* @param typeBits Bit mask with bits set for each memory type supported by the resource to request for (from VkMemoryRequirements)
-	* @param properties Bit mask of properties for the memory type to request
-	* @param (Optional) memTypeFound Pointer to a bool that is set to true if a matching memory type has been found
-	* 
-	* @return Index of the requested memory type
-	*
-	* @throw Throws an exception if memTypeFound is null and no memory type could be found that supports the requested properties
-	*/
-	uint32_t VulkanDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *memTypeFound) const
-	{
-		for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
-		{
-			if ((typeBits & 1) == 1)
-			{
-				if ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
-				{
-					if (memTypeFound)
-					{
-						*memTypeFound = true;
-					}
-					return i;
-				}
-			}
-			typeBits >>= 1;
-		}
+    /**
+    * 要求されたすべてのプロパティビットが設定されているメモリタイプのインデックスを取得します
+    *
+    * @param typeBits 要求するリソースがサポートする各メモリタイプに対応するビットが設定されたビットマスク（VkMemoryRequirementsから取得）
+    * @param properties 要求するメモリタイプのプロパティのビットマスク
+    * @param (任意) memTypeFound 一致するメモリタイプが見つかった場合にtrueに設定されるboolへのポインタ
+    *
+    * @return 要求されたメモリタイプのインデックス
+    *
+    * @throw memTypeFoundがnullで、要求されたプロパティをサポートするメモリタイプが見つからなかった場合に例外をスローします
+    */
+    uint32_t VulkanDevice::getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *memTypeFound) const
+    {
+        for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+        {
+            if ((typeBits & 1) == 1)
+            {
+                if ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+                {
+                    if (memTypeFound)
+                    {
+                        *memTypeFound = true;
+                    }
+                    return i;
+                }
+            }
+            typeBits >>= 1;
+        }
 
-		if (memTypeFound)
-		{
-			*memTypeFound = false;
-			return 0;
-		}
-		else
-		{
-			throw std::runtime_error("Could not find a matching memory type");
-		}
-	}
+        if (memTypeFound)
+        {
+            *memTypeFound = false;
+            return 0;
+        }
+        else
+        {
+            throw std::runtime_error("Could not find a matching memory type");
+        }
+    }
 
-	/**
-	* Get the index of a queue family that supports the requested queue flags
-	* SRS - support VkQueueFlags parameter for requesting multiple flags vs. VkQueueFlagBits for a single flag only
-	*
-	* @param queueFlags Queue flags to find a queue family index for
-	*
-	* @return Index of the queue family index that matches the flags
-	*
-	* @throw Throws an exception if no queue family index could be found that supports the requested flags
-	*/
-	uint32_t VulkanDevice::getQueueFamilyIndex(VkQueueFlags queueFlags) const
-	{
-		// Dedicated queue for compute
-		// Try to find a queue family index that supports compute but not graphics
-		if ((queueFlags & VK_QUEUE_COMPUTE_BIT) == queueFlags)
-		{
-			for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
-			{
-				if ((queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
-				{
-					return i;
-				}
-			}
-		}
+    /**
+    * 要求されたキューフラグをサポートするキューファミリーのインデックスを取得します
+    * SRS - 単一フラグのみのVkQueueFlagBitsに対し、複数フラグを要求するためのVkQueueFlagsパラメータをサポート
+    *
+    * @param queueFlags キューファミリーインデックスを見つけるためのキューフラグ
+    *
+    * @return フラグに一致するキューファミリーのインデックス
+    *
+    * @throw 要求されたフラグをサポートするキューファミリーインデックスが見つからなかった場合に例外をスローします
+    */
+    uint32_t VulkanDevice::getQueueFamilyIndex(VkQueueFlags queueFlags) const
+    {
+        // コンピュート用の専用キュー
+        // コンピュートをサポートし、グラフィックスをサポートしないキューファミリーインデックスを探す
+        if ((queueFlags & VK_QUEUE_COMPUTE_BIT) == queueFlags)
+        {
+            for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
+            {
+                if ((queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
+                {
+                    return i;
+                }
+            }
+        }
 
-		// Dedicated queue for transfer
-		// Try to find a queue family index that supports transfer but not graphics and compute
-		if ((queueFlags & VK_QUEUE_TRANSFER_BIT) == queueFlags)
-		{
-			for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
-			{
-				if ((queueFamilyProperties[i].queueFlags & VK_QUEUE_TRANSFER_BIT) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
-				{
-					return i;
-				}
-			}
-		}
+        // 転送用の専用キュー
+        // 転送をサポートし、グラフィックスとコンピュートをサポートしないキューファミリーインデックスを探す
+        if ((queueFlags & VK_QUEUE_TRANSFER_BIT) == queueFlags)
+        {
+            for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
+            {
+                if ((queueFamilyProperties[i].queueFlags & VK_QUEUE_TRANSFER_BIT) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
+                {
+                    return i;
+                }
+            }
+        }
 
-		// For other queue types or if no separate compute queue is present, return the first one to support the requested flags
-		for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
-		{
-			if ((queueFamilyProperties[i].queueFlags & queueFlags) == queueFlags)
-			{
-				return i;
-			}
-		}
+        // 他のキュータイプの場合、または個別のコンピュートキューが存在しない場合は、要求されたフラグをサポートする最初のものを返す
+        for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
+        {
+            if ((queueFamilyProperties[i].queueFlags & queueFlags) == queueFlags)
+            {
+                return i;
+            }
+        }
 
-		throw std::runtime_error("Could not find a matching queue family index");
-	}
+        throw std::runtime_error("Could not find a matching queue family index");
+    }
 
-	/**
-	* Create the logical device based on the assigned physical device, also gets default queue family indices
-	*
-	* @param enabledFeatures Can be used to enable certain features upon device creation
-	* @param pNextChain Optional chain of pointer to extension structures
-	* @param useSwapChain Set to false for headless rendering to omit the swapchain device extensions
-	* @param requestedQueueTypes Bit flags specifying the queue types to be requested from the device  
-	*
-	* @return VkResult of the device creation call
-	*/
-	VkResult VulkanDevice::createLogicalDevice(VkPhysicalDeviceFeatures enabledFeatures, std::vector<const char*> enabledExtensions, void* pNextChain, bool useSwapChain, VkQueueFlags requestedQueueTypes)
-	{			
-		// Desired queues need to be requested upon logical device creation
-		// Due to differing queue family configurations of Vulkan implementations this can be a bit tricky, especially if the application
-		// requests different queue types
+    /**
+    * 割り当てられた物理デバイスに基づいて論理デバイスを作成し、デフォルトのキューファミリーインデックスも取得します
+    *
+    * @param enabledFeatures デバイス作成時に特定の機能を有効化するために使用できます
+    * @param pNextChain (任意) 拡張構造体へのポインタのチェーン
+    * @param useSwapChain ヘッドなしレンダリングでスワップチェーンデバイス拡張を省略する場合はfalseに設定します
+    * @param requestedQueueTypes デバイスに要求するキュータイプを指定するビットフラグ
+    *
+    * @return デバイス作成呼び出しのVkResult
+    */
+    VkResult VulkanDevice::createLogicalDevice(VkPhysicalDeviceFeatures enabledFeatures, std::vector<const char*> enabledExtensions, void* pNextChain, bool useSwapChain, VkQueueFlags requestedQueueTypes)
+    {
+        // 目的のキューは論理デバイス作成時に要求する必要がある
+        // Vulkan実装のキューファミリー構成は様々であるため、特にアプリケーションが
+        // 異なるキュータイプを要求する場合には、少し注意が必要になる
 
-		std::vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
 
-		// Get queue family indices for the requested queue family types
-		// Note that the indices may overlap depending on the implementation
+        // 要求されたキューファミリータイプに対応するキューファミリーインデックスを取得する
+        // 実装によってはインデックスが重複する可能性があることに注意
 
-		const float defaultQueuePriority(0.0f);
+        const float defaultQueuePriority(0.0f);
 
-		// Graphics queue
-		if (requestedQueueTypes & VK_QUEUE_GRAPHICS_BIT)
-		{
-			queueFamilyIndices.graphics = getQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
-			VkDeviceQueueCreateInfo queueInfo{};
-			queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-			queueInfo.queueFamilyIndex = queueFamilyIndices.graphics;
-			queueInfo.queueCount = 1;
-			queueInfo.pQueuePriorities = &defaultQueuePriority;
-			queueCreateInfos.push_back(queueInfo);
-		}
-		else
-		{
-			queueFamilyIndices.graphics = 0;
-		}
+        // グラフィックスキュー
+        if (requestedQueueTypes & VK_QUEUE_GRAPHICS_BIT)
+        {
+            queueFamilyIndices.graphics = getQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
+            VkDeviceQueueCreateInfo queueInfo{};
+            queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueInfo.queueFamilyIndex = queueFamilyIndices.graphics;
+            queueInfo.queueCount = 1;
+            queueInfo.pQueuePriorities = &defaultQueuePriority;
+            queueCreateInfos.push_back(queueInfo);
+        }
+        else
+        {
+            queueFamilyIndices.graphics = 0;
+        }
 
-		// Dedicated compute queue
-		if (requestedQueueTypes & VK_QUEUE_COMPUTE_BIT)
-		{
-			queueFamilyIndices.compute = getQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT);
-			if (queueFamilyIndices.compute != queueFamilyIndices.graphics)
-			{
-				// If compute family index differs, we need an additional queue create info for the compute queue
-				VkDeviceQueueCreateInfo queueInfo{};
-				queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-				queueInfo.queueFamilyIndex = queueFamilyIndices.compute;
-				queueInfo.queueCount = 1;
-				queueInfo.pQueuePriorities = &defaultQueuePriority;
-				queueCreateInfos.push_back(queueInfo);
-			}
-		}
-		else
-		{
-			// Else we use the same queue
-			queueFamilyIndices.compute = queueFamilyIndices.graphics;
-		}
+        // 専用のコンピュートキュー
+        if (requestedQueueTypes & VK_QUEUE_COMPUTE_BIT)
+        {
+            queueFamilyIndices.compute = getQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT);
+            if (queueFamilyIndices.compute != queueFamilyIndices.graphics)
+            {
+                // コンピュートファミリーのインデックスが異なる場合、コンピュートキュー用に追加のキュー作成情報が必要になる
+                VkDeviceQueueCreateInfo queueInfo{};
+                queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                queueInfo.queueFamilyIndex = queueFamilyIndices.compute;
+                queueInfo.queueCount = 1;
+                queueInfo.pQueuePriorities = &defaultQueuePriority;
+                queueCreateInfos.push_back(queueInfo);
+            }
+        }
+        else
+        {
+            // そうでなければ同じキューを使用する
+            queueFamilyIndices.compute = queueFamilyIndices.graphics;
+        }
 
-		// Dedicated transfer queue
-		if (requestedQueueTypes & VK_QUEUE_TRANSFER_BIT)
-		{
-			queueFamilyIndices.transfer = getQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT);
-			if ((queueFamilyIndices.transfer != queueFamilyIndices.graphics) && (queueFamilyIndices.transfer != queueFamilyIndices.compute))
-			{
-				// If transfer family index differs, we need an additional queue create info for the transfer queue
-				VkDeviceQueueCreateInfo queueInfo{};
-				queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-				queueInfo.queueFamilyIndex = queueFamilyIndices.transfer;
-				queueInfo.queueCount = 1;
-				queueInfo.pQueuePriorities = &defaultQueuePriority;
-				queueCreateInfos.push_back(queueInfo);
-			}
-		}
-		else
-		{
-			// Else we use the same queue
-			queueFamilyIndices.transfer = queueFamilyIndices.graphics;
-		}
+        // 専用の転送キュー
+        if (requestedQueueTypes & VK_QUEUE_TRANSFER_BIT)
+        {
+            queueFamilyIndices.transfer = getQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT);
+            if ((queueFamilyIndices.transfer != queueFamilyIndices.graphics) && (queueFamilyIndices.transfer != queueFamilyIndices.compute))
+            {
+                // 転送ファミリーのインデックスが異なる場合、転送キュー用に追加のキュー作成情報が必要になる
+                VkDeviceQueueCreateInfo queueInfo{};
+                queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                queueInfo.queueFamilyIndex = queueFamilyIndices.transfer;
+                queueInfo.queueCount = 1;
+                queueInfo.pQueuePriorities = &defaultQueuePriority;
+                queueCreateInfos.push_back(queueInfo);
+            }
+        }
+        else
+        {
+            // そうでなければ同じキューを使用する
+            queueFamilyIndices.transfer = queueFamilyIndices.graphics;
+        }
 
-		// Create the logical device representation
-		std::vector<const char*> deviceExtensions(enabledExtensions);
-		if (useSwapChain)
-		{
-			// If the device will be used for presenting to a display via a swapchain we need to request the swapchain extension
-			deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-		}
+        // 論理デバイス表現を作成する
+        std::vector<const char*> deviceExtensions(enabledExtensions);
+        if (useSwapChain)
+        {
+            // デバイスがスワップチェーンを介してディスプレイに表示するために使用される場合、スワップチェーン拡張を要求する必要がある
+            deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        }
 
-		VkDeviceCreateInfo deviceCreateInfo = {};
-		deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-		deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());;
-		deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
-		deviceCreateInfo.pEnabledFeatures = &enabledFeatures;
-		
-		// If a pNext(Chain) has been passed, we need to add it to the device creation info
-		VkPhysicalDeviceFeatures2 physicalDeviceFeatures2{};
-		if (pNextChain) {
-			physicalDeviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-			physicalDeviceFeatures2.features = enabledFeatures;
-			physicalDeviceFeatures2.pNext = pNextChain;
-			deviceCreateInfo.pEnabledFeatures = nullptr;
-			deviceCreateInfo.pNext = &physicalDeviceFeatures2;
-		}
+        VkDeviceCreateInfo deviceCreateInfo = {};
+        deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());;
+        deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
+        deviceCreateInfo.pEnabledFeatures = &enabledFeatures;
+
+        // pNext(Chain)が渡された場合、それをデバイス作成情報に追加する必要がある
+        VkPhysicalDeviceFeatures2 physicalDeviceFeatures2{};
+        if (pNextChain) {
+            physicalDeviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            physicalDeviceFeatures2.features = enabledFeatures;
+            physicalDeviceFeatures2.pNext = pNextChain;
+            deviceCreateInfo.pEnabledFeatures = nullptr;
+            deviceCreateInfo.pNext = &physicalDeviceFeatures2;
+        }
 
 #if (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK) || defined(VK_USE_PLATFORM_METAL_EXT)) && defined(VK_KHR_portability_subset)
-		// SRS - When running on iOS/macOS with MoltenVK and VK_KHR_portability_subset is defined and supported by the device, enable the extension
-		if (extensionSupported(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME))
-		{
-			deviceExtensions.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
-		}
+        // SRS - MoltenVKを使用したiOS/macOSで実行し、VK_KHR_portability_subsetが定義されデバイスでサポートされている場合、その拡張を有効にする
+        if (extensionSupported(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME))
+        {
+            deviceExtensions.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
+        }
 #endif
 
-		if (deviceExtensions.size() > 0)
-		{
-			for (const char* enabledExtension : deviceExtensions)
-			{
-				if (!extensionSupported(enabledExtension)) {
-					std::cerr << "Enabled device extension \"" << enabledExtension << "\" is not present at device level\n";
-				}
-			}
+        if (deviceExtensions.size() > 0)
+        {
+            for (const char* enabledExtension : deviceExtensions)
+            {
+                if (!extensionSupported(enabledExtension)) {
+                    std::cerr << "Enabled device extension \"" << enabledExtension << "\" is not present at device level\n";
+                }
+            }
 
-			deviceCreateInfo.enabledExtensionCount = (uint32_t)deviceExtensions.size();
-			deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
-		}
+            deviceCreateInfo.enabledExtensionCount = (uint32_t)deviceExtensions.size();
+            deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
+        }
 
-		this->enabledFeatures = enabledFeatures;
+        this->enabledFeatures = enabledFeatures;
 
-		VkResult result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice);
-		if (result != VK_SUCCESS) 
-		{
-			return result;
-		}
+        VkResult result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice);
+        if (result != VK_SUCCESS)
+        {
+            return result;
+        }
 
-		// Create a default command pool for graphics command buffers
-		commandPool = createCommandPool(queueFamilyIndices.graphics);
+        // グラフィックスコマンドバッファ用のデフォルトコマンドプールを作成する
+        commandPool = createCommandPool(queueFamilyIndices.graphics);
 
-		return result;
-	}
+        return result;
+    }
 
-	/**
-	* Create a buffer on the device
-	*
-	* @param usageFlags Usage flag bit mask for the buffer (i.e. index, vertex, uniform buffer)
-	* @param memoryPropertyFlags Memory properties for this buffer (i.e. device local, host visible, coherent)
-	* @param size Size of the buffer in byes
-	* @param buffer Pointer to the buffer handle acquired by the function
-	* @param memory Pointer to the memory handle acquired by the function
-	* @param data Pointer to the data that should be copied to the buffer after creation (optional, if not set, no data is copied over)
-	*
-	* @return VK_SUCCESS if buffer handle and memory have been created and (optionally passed) data has been copied
-	*/
-	VkResult VulkanDevice::createBuffer(VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkBuffer *buffer, VkDeviceMemory *memory, void *data)
-	{
-		// Create the buffer handle
-		VkBufferCreateInfo bufferCreateInfo = vks::initializers::bufferCreateInfo(usageFlags, size);
-		bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-		VK_CHECK_RESULT(vkCreateBuffer(logicalDevice, &bufferCreateInfo, nullptr, buffer));
+    /**
+    * デバイス上にバッファを作成します
+    *
+    * @param usageFlags バッファの用途フラグビットマスク（例：インデックス、頂点、ユニフォームバッファ）
+    * @param memoryPropertyFlags このバッファのメモリプロパティ（例：デバイスローカル、ホスト可視、コヒーレント）
+    * @param size バッファのサイズ（バイト単位）
+    * @param buffer 関数によって取得されるバッファハンドルへのポインタ
+    * @param memory 関数によって取得されるメモリハンドルへのポインタ
+    * @param data 作成後にバッファにコピーされるデータへのポインタ（任意。設定されない場合、データはコピーされない）
+    *
+    * @return バッファハンドルとメモリが作成され、（任意で渡された）データがコピーされた場合にVK_SUCCESS
+    */
+    VkResult VulkanDevice::createBuffer(VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkBuffer *buffer, VkDeviceMemory *memory, void *data)
+    {
+        // バッファハンドルを作成
+        VkBufferCreateInfo bufferCreateInfo = vks::initializers::bufferCreateInfo(usageFlags, size);
+        bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        VK_CHECK_RESULT(vkCreateBuffer(logicalDevice, &bufferCreateInfo, nullptr, buffer));
 
-		// Create the memory backing up the buffer handle
-		VkMemoryRequirements memReqs;
-		VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-		vkGetBufferMemoryRequirements(logicalDevice, *buffer, &memReqs);
-		memAlloc.allocationSize = memReqs.size;
-		// Find a memory type index that fits the properties of the buffer
-		memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
-		// If the buffer has VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT set we also need to enable the appropriate flag during allocation
-		VkMemoryAllocateFlagsInfoKHR allocFlagsInfo{};
-		if (usageFlags & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
-			allocFlagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHR;
-			allocFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR;
-			memAlloc.pNext = &allocFlagsInfo;
-		}
-		VK_CHECK_RESULT(vkAllocateMemory(logicalDevice, &memAlloc, nullptr, memory));
-			
-		// If a pointer to the buffer data has been passed, map the buffer and copy over the data
-		if (data != nullptr)
-		{
-			void *mapped;
-			VK_CHECK_RESULT(vkMapMemory(logicalDevice, *memory, 0, size, 0, &mapped));
-			memcpy(mapped, data, size);
-			// If host coherency hasn't been requested, do a manual flush to make writes visible
-			if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
-			{
-				VkMappedMemoryRange mappedRange = vks::initializers::mappedMemoryRange();
-				mappedRange.memory = *memory;
-				mappedRange.offset = 0;
-				mappedRange.size = size;
-				vkFlushMappedMemoryRanges(logicalDevice, 1, &mappedRange);
-			}
-			vkUnmapMemory(logicalDevice, *memory);
-		}
+        // バッファハンドルを裏付けるメモリを作成
+        VkMemoryRequirements memReqs;
+        VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
+        vkGetBufferMemoryRequirements(logicalDevice, *buffer, &memReqs);
+        memAlloc.allocationSize = memReqs.size;
+        // バッファのプロパティに適合するメモリタイプのインデックスを見つける
+        memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
+        // バッファにVK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BITが設定されている場合、割り当て時に適切なフラグも有効にする必要がある
+        VkMemoryAllocateFlagsInfoKHR allocFlagsInfo{};
+        if (usageFlags & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
+            allocFlagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHR;
+            allocFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR;
+            memAlloc.pNext = &allocFlagsInfo;
+        }
+        VK_CHECK_RESULT(vkAllocateMemory(logicalDevice, &memAlloc, nullptr, memory));
 
-		// Attach the memory to the buffer object
-		VK_CHECK_RESULT(vkBindBufferMemory(logicalDevice, *buffer, *memory, 0));
+        // バッファデータへのポインタが渡された場合、バッファをマップしてデータをコピーする
+        if (data != nullptr)
+        {
+            void *mapped;
+            VK_CHECK_RESULT(vkMapMemory(logicalDevice, *memory, 0, size, 0, &mapped));
+            memcpy(mapped, data, size);
+            // ホストコヒーレンシーが要求されていない場合、書き込みを可視にするために手動でフラッシュする
+            if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
+            {
+                VkMappedMemoryRange mappedRange = vks::initializers::mappedMemoryRange();
+                mappedRange.memory = *memory;
+                mappedRange.offset = 0;
+                mappedRange.size = size;
+                vkFlushMappedMemoryRanges(logicalDevice, 1, &mappedRange);
+            }
+            vkUnmapMemory(logicalDevice, *memory);
+        }
 
-		return VK_SUCCESS;
-	}
+        // メモリをバッファオブジェクトにアタッチする
+        VK_CHECK_RESULT(vkBindBufferMemory(logicalDevice, *buffer, *memory, 0));
 
-	/**
-	* Create a buffer on the device
-	*
-	* @param usageFlags Usage flag bit mask for the buffer (i.e. index, vertex, uniform buffer)
-	* @param memoryPropertyFlags Memory properties for this buffer (i.e. device local, host visible, coherent)
-	* @param buffer Pointer to a vk::Vulkan buffer object
-	* @param size Size of the buffer in bytes
-	* @param data Pointer to the data that should be copied to the buffer after creation (optional, if not set, no data is copied over)
-	*
-	* @return VK_SUCCESS if buffer handle and memory have been created and (optionally passed) data has been copied
-	*/
-	VkResult VulkanDevice::createBuffer(VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, vks::Buffer *buffer, VkDeviceSize size, void *data)
-	{
-		buffer->device = logicalDevice;
+        return VK_SUCCESS;
+    }
 
-		// Create the buffer handle
-		VkBufferCreateInfo bufferCreateInfo = vks::initializers::bufferCreateInfo(usageFlags, size);
-		VK_CHECK_RESULT(vkCreateBuffer(logicalDevice, &bufferCreateInfo, nullptr, &buffer->buffer));
+    /**
+    * デバイス上にバッファを作成します
+    *
+    * @param usageFlags バッファの用途フラグビットマスク（例：インデックス、頂点、ユニフォームバッファ）
+    * @param memoryPropertyFlags このバッファのメモリプロパティ（例：デバイスローカル、ホスト可視、コヒーレント）
+    * @param buffer vks::Bufferオブジェクトへのポインタ
+    * @param size バッファのサイズ（バイト単位）
+    * @param data 作成後にバッファにコピーされるデータへのポインタ（任意。設定されない場合、データはコピーされない）
+    *
+    * @return バッファハンドルとメモリが作成され、（任意で渡された）データがコピーされた場合にVK_SUCCESS
+    */
+    VkResult VulkanDevice::createBuffer(VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, vks::Buffer *buffer, VkDeviceSize size, void *data)
+    {
+        buffer->device = logicalDevice;
 
-		// Create the memory backing up the buffer handle
-		VkMemoryRequirements memReqs;
-		VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-		vkGetBufferMemoryRequirements(logicalDevice, buffer->buffer, &memReqs);
-		memAlloc.allocationSize = memReqs.size;
-		// Find a memory type index that fits the properties of the buffer
-		memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
-		// If the buffer has VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT set we also need to enable the appropriate flag during allocation
-		VkMemoryAllocateFlagsInfoKHR allocFlagsInfo{};
-		if (usageFlags & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
-			allocFlagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHR;
-			allocFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR;
-			memAlloc.pNext = &allocFlagsInfo;
-		}
-		VK_CHECK_RESULT(vkAllocateMemory(logicalDevice, &memAlloc, nullptr, &buffer->memory));
+        // バッファハンドルを作成
+        VkBufferCreateInfo bufferCreateInfo = vks::initializers::bufferCreateInfo(usageFlags, size);
+        VK_CHECK_RESULT(vkCreateBuffer(logicalDevice, &bufferCreateInfo, nullptr, &buffer->buffer));
 
-		buffer->alignment = memReqs.alignment;
-		buffer->size = size;
-		buffer->usageFlags = usageFlags;
-		buffer->memoryPropertyFlags = memoryPropertyFlags;
+        // バッファハンドルを裏付けるメモリを作成
+        VkMemoryRequirements memReqs;
+        VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
+        vkGetBufferMemoryRequirements(logicalDevice, buffer->buffer, &memReqs);
+        memAlloc.allocationSize = memReqs.size;
+        // バッファのプロパティに適合するメモリタイプのインデックスを見つける
+        memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
+        // バッファにVK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BITが設定されている場合、割り当て時に適切なフラグも有効にする必要がある
+        VkMemoryAllocateFlagsInfoKHR allocFlagsInfo{};
+        if (usageFlags & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT) {
+            allocFlagsInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHR;
+            allocFlagsInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR;
+            memAlloc.pNext = &allocFlagsInfo;
+        }
+        VK_CHECK_RESULT(vkAllocateMemory(logicalDevice, &memAlloc, nullptr, &buffer->memory));
 
-		// If a pointer to the buffer data has been passed, map the buffer and copy over the data
-		if (data != nullptr)
-		{
-			VK_CHECK_RESULT(buffer->map());
-			memcpy(buffer->mapped, data, size);
-			if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
-				buffer->flush();
+        buffer->alignment = memReqs.alignment;
+        buffer->size = size;
+        buffer->usageFlags = usageFlags;
+        buffer->memoryPropertyFlags = memoryPropertyFlags;
 
-			buffer->unmap();
-		}
+        // バッファデータへのポインタが渡された場合、バッファをマップしてデータをコピーする
+        if (data != nullptr)
+        {
+            VK_CHECK_RESULT(buffer->map());
+            memcpy(buffer->mapped, data, size);
+            if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
+                buffer->flush();
 
-		// Initialize a default descriptor that covers the whole buffer size
-		buffer->setupDescriptor();
+            buffer->unmap();
+        }
 
-		// Attach the memory to the buffer object
-		return buffer->bind();
-	}
+        // バッファ全体をカバーするデフォルトのディスクリプタを初期化する
+        buffer->setupDescriptor();
 
-	/**
-	* Copy buffer data from src to dst using VkCmdCopyBuffer
-	* 
-	* @param src Pointer to the source buffer to copy from
-	* @param dst Pointer to the destination buffer to copy to
-	* @param queue Pointer
-	* @param copyRegion (Optional) Pointer to a copy region, if NULL, the whole buffer is copied
-	*
-	* @note Source and destination pointers must have the appropriate transfer usage flags set (TRANSFER_SRC / TRANSFER_DST)
-	*/
-	void VulkanDevice::copyBuffer(vks::Buffer *src, vks::Buffer *dst, VkQueue queue, VkBufferCopy *copyRegion)
-	{
-		assert(dst->size <= src->size);
-		assert(src->buffer);
-		VkCommandBuffer copyCmd = createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-		VkBufferCopy bufferCopy{};
-		if (copyRegion == nullptr)
-		{
-			bufferCopy.size = src->size;
-		}
-		else
-		{
-			bufferCopy = *copyRegion;
-		}
+        // メモリをバッファオブジェクトにアタッチする
+        return buffer->bind();
+    }
 
-		vkCmdCopyBuffer(copyCmd, src->buffer, dst->buffer, 1, &bufferCopy);
+    /**
+    * VkCmdCopyBufferを使用してバッファデータをsrcからdstにコピーします
+    *
+    * @param src コピー元のソースバッファへのポインタ
+    * @param dst コピー先のデスティネーションバッファへのポインタ
+    * @param queue キュー
+    * @param copyRegion (任意) コピー領域へのポインタ。NULLの場合、バッファ全体がコピーされる
+    *
+    * @note ソースとデスティネーションのバッファは、適切な転送用途フラグ（TRANSFER_SRC / TRANSFER_DST）が設定されている必要があります
+    */
+    void VulkanDevice::copyBuffer(vks::Buffer *src, vks::Buffer *dst, VkQueue queue, VkBufferCopy *copyRegion)
+    {
+        assert(dst->size <= src->size);
+        assert(src->buffer);
+        VkCommandBuffer copyCmd = createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+        VkBufferCopy bufferCopy{};
+        if (copyRegion == nullptr)
+        {
+            bufferCopy.size = src->size;
+        }
+        else
+        {
+            bufferCopy = *copyRegion;
+        }
 
-		flushCommandBuffer(copyCmd, queue);
-	}
+        vkCmdCopyBuffer(copyCmd, src->buffer, dst->buffer, 1, &bufferCopy);
 
-	/** 
-	* Create a command pool for allocation command buffers from
-	* 
-	* @param queueFamilyIndex Family index of the queue to create the command pool for
-	* @param createFlags (Optional) Command pool creation flags (Defaults to VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT)
-	*
-	* @note Command buffers allocated from the created pool can only be submitted to a queue with the same family index
-	*
-	* @return A handle to the created command buffer
-	*/
-	VkCommandPool VulkanDevice::createCommandPool(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags)
-	{
-		VkCommandPoolCreateInfo cmdPoolInfo = {};
-		cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		cmdPoolInfo.queueFamilyIndex = queueFamilyIndex;
-		cmdPoolInfo.flags = createFlags;
-		VkCommandPool cmdPool;
-		VK_CHECK_RESULT(vkCreateCommandPool(logicalDevice, &cmdPoolInfo, nullptr, &cmdPool));
-		return cmdPool;
-	}
+        flushCommandBuffer(copyCmd, queue);
+    }
 
-	/**
-	* Allocate a command buffer from the command pool
-	*
-	* @param level Level of the new command buffer (primary or secondary)
-	* @param pool Command pool from which the command buffer will be allocated
-	* @param (Optional) begin If true, recording on the new command buffer will be started (vkBeginCommandBuffer) (Defaults to false)
-	*
-	* @return A handle to the allocated command buffer
-	*/
-	VkCommandBuffer VulkanDevice::createCommandBuffer(VkCommandBufferLevel level, VkCommandPool pool, bool begin)
-	{
-		VkCommandBufferAllocateInfo cmdBufAllocateInfo = vks::initializers::commandBufferAllocateInfo(pool, level, 1);
-		VkCommandBuffer cmdBuffer;
-		VK_CHECK_RESULT(vkAllocateCommandBuffers(logicalDevice, &cmdBufAllocateInfo, &cmdBuffer));
-		// If requested, also start recording for the new command buffer
-		if (begin)
-		{
-			VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
-			VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
-		}
-		return cmdBuffer;
-	}
-			
-	VkCommandBuffer VulkanDevice::createCommandBuffer(VkCommandBufferLevel level, bool begin)
-	{
-		return createCommandBuffer(level, commandPool, begin);
-	}
+    /**
+    * コマンドバッファを割り当てるためのコマンドプールを作成します
+    *
+    * @param queueFamilyIndex コマンドプールを作成するキューのファミリーインデックス
+    * @param createFlags (任意) コマンドプール作成フラグ（デフォルトは VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT）
+    *
+    * @note 作成されたプールから割り当てられたコマンドバッファは、同じファミリーインデックスを持つキューにのみサブミットできます
+    *
+    * @return 作成されたコマンドプールへのハンドル
+    */
+    VkCommandPool VulkanDevice::createCommandPool(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags)
+    {
+        VkCommandPoolCreateInfo cmdPoolInfo = {};
+        cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        cmdPoolInfo.queueFamilyIndex = queueFamilyIndex;
+        cmdPoolInfo.flags = createFlags;
+        VkCommandPool cmdPool;
+        VK_CHECK_RESULT(vkCreateCommandPool(logicalDevice, &cmdPoolInfo, nullptr, &cmdPool));
+        return cmdPool;
+    }
 
-	/**
-	* Finish command buffer recording and submit it to a queue
-	*
-	* @param commandBuffer Command buffer to flush
-	* @param queue Queue to submit the command buffer to
-	* @param pool Command pool on which the command buffer has been created
-	* @param free (Optional) Free the command buffer once it has been submitted (Defaults to true)
-	*
-	* @note The queue that the command buffer is submitted to must be from the same family index as the pool it was allocated from
-	* @note Uses a fence to ensure command buffer has finished executing
-	*/
-	void VulkanDevice::flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, VkCommandPool pool, bool free)
-	{
-		if (commandBuffer == VK_NULL_HANDLE)
-		{
-			return;
-		}
+    /**
+    * コマンドプールからコマンドバッファを割り当てます
+    *
+    * @param level 新しいコマンドバッファのレベル（プライマリまたはセカンダリ）
+    * @param pool コマンドバッファが割り当てられるコマンドプール
+    * @param (任意) begin trueの場合、新しいコマンドバッファでの記録が開始されます(vkBeginCommandBuffer)（デフォルトはfalse）
+    *
+    * @return 割り当てられたコマンドバッファへのハンドル
+    */
+    VkCommandBuffer VulkanDevice::createCommandBuffer(VkCommandBufferLevel level, VkCommandPool pool, bool begin)
+    {
+        VkCommandBufferAllocateInfo cmdBufAllocateInfo = vks::initializers::commandBufferAllocateInfo(pool, level, 1);
+        VkCommandBuffer cmdBuffer;
+        VK_CHECK_RESULT(vkAllocateCommandBuffers(logicalDevice, &cmdBufAllocateInfo, &cmdBuffer));
+        // 要求された場合、新しいコマンドバッファの記録も開始する
+        if (begin)
+        {
+            VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
+            VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
+        }
+        return cmdBuffer;
+    }
 
-		VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
+    VkCommandBuffer VulkanDevice::createCommandBuffer(VkCommandBufferLevel level, bool begin)
+    {
+        return createCommandBuffer(level, commandPool, begin);
+    }
 
-		VkSubmitInfo submitInfo = vks::initializers::submitInfo();
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &commandBuffer;
-		// Create fence to ensure that the command buffer has finished executing
-		VkFenceCreateInfo fenceInfo = vks::initializers::fenceCreateInfo(VK_FLAGS_NONE);
-		VkFence fence;
-		VK_CHECK_RESULT(vkCreateFence(logicalDevice, &fenceInfo, nullptr, &fence));
-		// Submit to the queue
-		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, fence));
-		// Wait for the fence to signal that command buffer has finished executing
-		VK_CHECK_RESULT(vkWaitForFences(logicalDevice, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT));
-		vkDestroyFence(logicalDevice, fence, nullptr);
-		if (free)
-		{
-			vkFreeCommandBuffers(logicalDevice, pool, 1, &commandBuffer);
-		}
-	}
+    /**
+    * コマンドバッファの記録を終了し、キューにサブミットします
+    *
+    * @param commandBuffer フラッシュするコマンドバッファ
+    * @param queue コマンドバッファをサブミットするキュー
+    * @param pool コマンドバッファが作成されたコマンドプール
+    * @param free (任意) コマンドバッファがサブミットされた後、解放します（デフォルトはtrue）
+    *
+    * @note コマンドバッファがサブミットされるキューは、それが割り当てられたプールと同じファミリーインデックスのものでなければなりません
+    * @note フェンスを使用して、コマンドバッファの実行が完了したことを保証します
+    */
+    void VulkanDevice::flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, VkCommandPool pool, bool free)
+    {
+        if (commandBuffer == VK_NULL_HANDLE)
+        {
+            return;
+        }
 
-	void VulkanDevice::flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, bool free)
-	{
-		return flushCommandBuffer(commandBuffer, queue, commandPool, free);
-	}
+        VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));
 
-	/**
-	* Check if an extension is supported by the (physical device)
-	*
-	* @param extension Name of the extension to check
-	*
-	* @return True if the extension is supported (present in the list read at device creation time)
-	*/
-	bool VulkanDevice::extensionSupported(std::string extension)
-	{
-		return (std::find(supportedExtensions.begin(), supportedExtensions.end(), extension) != supportedExtensions.end());
-	}
+        VkSubmitInfo submitInfo = vks::initializers::submitInfo();
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+        // コマンドバッファの実行が完了したことを保証するためにフェンスを作成
+        VkFenceCreateInfo fenceInfo = vks::initializers::fenceCreateInfo(VK_FLAGS_NONE);
+        VkFence fence;
+        VK_CHECK_RESULT(vkCreateFence(logicalDevice, &fenceInfo, nullptr, &fence));
+        // キューにサブミット
+        VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, fence));
+        // フェンスがコマンドバッファの実行完了を通知するまで待機
+        VK_CHECK_RESULT(vkWaitForFences(logicalDevice, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT));
+        vkDestroyFence(logicalDevice, fence, nullptr);
+        if (free)
+        {
+            vkFreeCommandBuffers(logicalDevice, pool, 1, &commandBuffer);
+        }
+    }
 
-	/**
-	* Select the best-fit depth format for this device from a list of possible depth (and stencil) formats
-	*
-	* @param checkSamplingSupport Check if the format can be sampled from (e.g. for shader reads)
-	*
-	* @return The depth format that best fits for the current device
-	*
-	* @throw Throws an exception if no depth format fits the requirements
-	*/
-	VkFormat VulkanDevice::getSupportedDepthFormat(bool checkSamplingSupport)
-	{
-		// All depth formats may be optional, so we need to find a suitable depth format to use
-		std::vector<VkFormat> depthFormats = { VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D32_SFLOAT, VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D16_UNORM_S8_UINT, VK_FORMAT_D16_UNORM };
-		for (auto& format : depthFormats)
-		{
-			VkFormatProperties formatProperties;
-			vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
-			// Format must support depth stencil attachment for optimal tiling
-			if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-			{
-				if (checkSamplingSupport) {
-					if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
-						continue;
-					}
-				}
-				return format;
-			}
-		}
-		throw std::runtime_error("Could not find a matching depth format");
-	}
+    void VulkanDevice::flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, bool free)
+    {
+        return flushCommandBuffer(commandBuffer, queue, commandPool, free);
+    }
+
+    /**
+    * 拡張機能が（物理デバイスで）サポートされているか確認します
+    *
+    * @param extension 確認する拡張機能の名前
+    *
+    * @return 拡張機能がサポートされている（デバイス作成時に読み込まれたリストに存在する）場合はTrue
+    */
+    bool VulkanDevice::extensionSupported(std::string extension)
+    {
+        return (std::find(supportedExtensions.begin(), supportedExtensions.end(), extension) != supportedExtensions.end());
+    }
+
+    /**
+    * 使用可能なデプス（およびステンシル）フォーマットのリストから、このデバイスに最適なデプスフォーマットを選択します
+    *
+    * @param checkSamplingSupport フォーマットがサンプリング可能か（例：シェーダーでの読み取り）をチェックします
+    *
+    * @return 現在のデバイスに最も適合するデプスフォーマット
+    *
+    * @throw 要件に合うデプスフォーマットが見つからない場合に例外をスローします
+    */
+    VkFormat VulkanDevice::getSupportedDepthFormat(bool checkSamplingSupport)
+    {
+        // すべてのデプスフォーマットはオプショナルである可能性があるため、使用に適したデプスフォーマットを見つける必要がある
+        std::vector<VkFormat> depthFormats = { VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D32_SFLOAT, VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D16_UNORM_S8_UINT, VK_FORMAT_D16_UNORM };
+        for (auto& format : depthFormats)
+        {
+            VkFormatProperties formatProperties;
+            vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
+            // フォーマットはオプティマルタイリングのためにデプス・ステンシルアタッチメントをサポートしている必要がある
+            if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+            {
+                if (checkSamplingSupport) {
+                    if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
+                        continue;
+                    }
+                }
+                return format;
+            }
+        }
+        throw std::runtime_error("Could not find a matching depth format");
+    }
 
 };

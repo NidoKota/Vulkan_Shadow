@@ -1,9 +1,9 @@
-/*
-* Vulkan �T���v�� ���N���X
+﻿/*
+* Vulkan サンプル 基底クラス
 *
 * Copyright (C) 2016-2024 by Sascha Willems - www.saschawillems.de
 *
-* ���̃R�[�h��MIT���C�Z���X�iMIT�j(http://opensource.org/licenses/MIT)�̉��Ń��C�Z���X����Ă��܂��B
+* このコードはMITライセンス（MIT）(http://opensource.org/licenses/MIT)の下でライセンスされています。
 */
 
 #pragma once
@@ -92,64 +92,64 @@ private:
 	void destroyCommandBuffers();
 	std::string shaderDir = "glsl";
 protected:
-	// glsl�܂���hlsl�V�F�[�_�[�f�B���N�g���̃��[�g�ւ̃p�X��Ԃ��܂��B
+	// glslまたはhlslシェーダーディレクトリのルートへのパスを返します。
 	std::string getShadersPath() const;
 
-	// fps��\�����邽�߂̃t���[���J�E���^�[
+	// fpsを表示するためのフレームカウンター
 	uint32_t frameCounter = 0;
 	uint32_t lastFPS = 0;
 	std::chrono::time_point<std::chrono::high_resolution_clock> lastTimestamp, tPrevEnd;
-	// Vulkan�C���X�^���X�A���ׂẴA�v���P�[�V�������Ƃ̏�Ԃ��i�[���܂��B
+	// Vulkanインスタンス、すべてのアプリケーションごとの状態を格納します。
 	VkInstance instance{ VK_NULL_HANDLE };
 	std::vector<std::string> supportedInstanceExtensions;
-	// Vulkan���g�p���镨���f�o�C�X�iGPU�j
+	// Vulkanが使用する物理デバイス（GPU）
 	VkPhysicalDevice physicalDevice{ VK_NULL_HANDLE };
-	// �����f�o�C�X�̃v���p�e�B���i�[���܂��i��F�f�o�C�X�̐������`�F�b�N���邽�߁j�B
+	// 物理デバイスのプロパティを格納します（例：デバイスの制限をチェックするため）。
 	VkPhysicalDeviceProperties deviceProperties{};
-	// �I�����ꂽ�����f�o�C�X�ŗ��p�\�ȋ@�\���i�[���܂��i��F�@�\�����p�\���`�F�b�N���邽�߁j�B
+	// 選択された物理デバイスで利用可能な機能を格納します（例：機能が利用可能かチェックするため）。
 	VkPhysicalDeviceFeatures deviceFeatures{};
-	// �����f�o�C�X�ŗ��p�\�Ȃ��ׂẴ������i�^�C�v�j�v���p�e�B���i�[���܂��B
+	// 物理デバイスで利用可能なすべてのメモリ（タイプ）プロパティを格納します。
 	VkPhysicalDeviceMemoryProperties deviceMemoryProperties{};
-	/** @brief ���̃T���v���ŗL���ɂ��镨���f�o�C�X�̋@�\�Z�b�g�i�h���N���X�̃R���X�g���N�^�Őݒ肷��K�v������܂��j*/
+	/** @brief このサンプルで有効にする物理デバイスの機能セット（派生クラスのコンストラクタで設定する必要があります）*/
 	VkPhysicalDeviceFeatures enabledFeatures{};
-	/** @brief ���̃T���v���ŗL���ɂ���f�o�C�X�g���@�\�̃Z�b�g�i�h���N���X�̃R���X�g���N�^�Őݒ肷��K�v������܂��j*/
+	/** @brief このサンプルで有効にするデバイス拡張機能のセット（派生クラスのコンストラクタで設定する必要があります）*/
 	std::vector<const char*> enabledDeviceExtensions;
 	std::vector<const char*> enabledInstanceExtensions;
-	/** @brief �f�o�C�X�쐬���Ɋg���@�\�̍\���̂�n�����߂̃I�v�V������pNext�\���� */
+	/** @brief デバイス作成時に拡張機能の構造体を渡すためのオプションのpNext構造体 */
 	void* deviceCreatepNextChain = nullptr;
-	/** @brief �_���f�o�C�X�A�A�v���P�[�V�������猩�������f�o�C�X�iGPU�j*/
+	/** @brief 論理デバイス、アプリケーションから見た物理デバイス（GPU）*/
 	VkDevice device{ VK_NULL_HANDLE };
-	// �R�}���h�o�b�t�@���T�u�~�b�g�����f�o�C�X�̃O���t�B�b�N�X�L���[�ւ̃n���h��
+	// コマンドバッファがサブミットされるデバイスのグラフィックスキューへのハンドル
 	VkQueue queue{ VK_NULL_HANDLE };
-	// �[�x�o�b�t�@�̃t�H�[�}�b�g�iVulkan�̏��������ɑI������܂��j
+	// 深度バッファのフォーマット（Vulkanの初期化中に選択されます）
 	VkFormat depthFormat;
-	// �R�}���h�o�b�t�@�v�[��
+	// コマンドバッファプール
 	VkCommandPool cmdPool{ VK_NULL_HANDLE };
-	/** @brief �O���t�B�b�N�X�L���[�ւ̃T�u�~�b�V������ҋ@���邽�߂Ɏg�p�����p�C�v���C���X�e�[�W */
+	/** @brief グラフィックスキューへのサブミッションを待機するために使用されるパイプラインステージ */
 	VkPipelineStageFlags submitPipelineStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	// �L���[�ɒ񎦂����R�}���h�o�b�t�@�ƃZ�}�t�H���܂݂܂��B
+	// キューに提示されるコマンドバッファとセマフォを含みます。
 	VkSubmitInfo submitInfo;
-	// �����_�����O�Ɏg�p�����R�}���h�o�b�t�@
+	// レンダリングに使用されるコマンドバッファ
 	std::vector<VkCommandBuffer> drawCmdBuffers;
-	// �t���[���o�b�t�@�ւ̏������݂̂��߂̃O���[�o�������_�[�p�X
+	// フレームバッファへの書き込みのためのグローバルレンダーパス
 	VkRenderPass renderPass{ VK_NULL_HANDLE };
-	// ���p�\�ȃt���[���o�b�t�@�̃��X�g�i�X���b�v�`�F�[���̃C���[�W���Ɠ����j
+	// 利用可能なフレームバッファのリスト（スワップチェーンのイメージ数と同じ）
 	std::vector<VkFramebuffer>frameBuffers;
-	// �A�N�e�B�u�ȃt���[���o�b�t�@�̃C���f�b�N�X
+	// アクティブなフレームバッファのインデックス
 	uint32_t currentBuffer = 0;
-	// �f�B�X�N���v�^�Z�b�g�v�[��
+	// ディスクリプタセットプール
 	VkDescriptorPool descriptorPool{ VK_NULL_HANDLE };
-	// �쐬���ꂽ�V�F�[�_�[���W���[���̃��X�g�i�N���[���A�b�v�̂��߂ɕۑ�����܂��j
+	// 作成されたシェーダーモジュールのリスト（クリーンアップのために保存されます）
 	std::vector<VkShaderModule> shaderModules;
-	// �p�C�v���C���L���b�V���I�u�W�F�N�g
+	// パイプラインキャッシュオブジェクト
 	VkPipelineCache pipelineCache{ VK_NULL_HANDLE };
-	// �C���[�W�i�t���[���o�b�t�@�j���E�B���h�E�V�X�e���ɒ񎦂��邽�߂̃X���b�v�`�F�[�������b�v���܂��B
+	// イメージ（フレームバッファ）をウィンドウシステムに提示するためのスワップチェーンをラップします。
 	VulkanSwapChain swapChain;
-	// �����Z�}�t�H
+	// 同期セマフォ
 	struct {
-		// �X���b�v�`�F�[���C���[�W�̒�
+		// スワップチェーンイメージの提示
 		VkSemaphore presentComplete;
-		// �R�}���h�o�b�t�@�̃T�u�~�b�g�Ǝ��s
+		// コマンドバッファのサブミットと実行
 		VkSemaphore renderComplete;
 	} semaphores;
 	std::vector<VkFence> waitFences;
@@ -164,33 +164,33 @@ public:
 	vks::UIOverlay ui;
 	CommandLineParser commandLineParser;
 
-	/** @brief �����\�^�C�}�[�i���p�\�ȏꍇ�j���g�p���đ��肳�ꂽ�Ō�̃t���[������ */
+	/** @brief 高性能タイマー（利用可能な場合）を使用して測定された最後のフレーム時間 */
 	float frameTimer = 1.0f;
 
 	vks::Benchmark benchmark;
 
-	/** @brief �J�v�Z�������ꂽ��������ј_��Vulkan�f�o�C�X */
+	/** @brief カプセル化された物理および論理Vulkanデバイス */
 	vks::VulkanDevice* vulkanDevice;
 
-	/** @brief �R�}���h���C�������ȂǂŕύX�\�ȃT���v���̐ݒ� */
+	/** @brief コマンドライン引数などで変更可能なサンプルの設定 */
 	struct Settings {
-		/** @brief true�ɐݒ肷��ƁA���؃��C���[�i����у��b�Z�[�W�o�́j��L���ɂ��܂� */
+		/** @brief trueに設定すると、検証レイヤー（およびメッセージ出力）を有効にします */
 		bool validation = false;
-		/** @brief �R�}���h���C���Ńt���X�N���[�����[�h���v�����ꂽ�ꍇ��true�ɐݒ肵�܂� */
+		/** @brief コマンドラインでフルスクリーンモードが要求された場合にtrueに設定します */
 		bool fullscreen = false;
-		/** @brief �X���b�v�`�F�[����v-sync�����������ꍇ��true�ɐݒ肵�܂� */
+		/** @brief スワップチェーンでv-syncが強制される場合にtrueに設定します */
 		bool vsync = false;
-		/** @brief UI�I�[�o�[���C��L���ɂ��܂� */
+		/** @brief UIオーバーレイを有効にします */
 		bool overlay = true;
 	} settings;
 
-	/** @brief �Q�[���p�b�h���͂̏�ԁiAndroid�ł̂ݎg�p�j*/
+	/** @brief ゲームパッド入力の状態（Androidでのみ使用）*/
 	struct {
 		glm::vec2 axisLeft = glm::vec2(0.0f);
 		glm::vec2 axisRight = glm::vec2(0.0f);
 	} gamePadState;
 
-	/** @brief �}�E�X/�^�b�`���͂̏�� */
+	/** @brief マウス/タッチ入力の状態 */
 	struct {
 		struct {
 			bool left = false;
@@ -204,10 +204,10 @@ public:
 
 	static std::vector<const char*> args;
 
-	// -1.0����1.0�ɃN�����v���ꂽ�A�t���[�����[�g�Ɉˑ����Ȃ��^�C�}�[�l���`���܂��B
-	// �A�j���[�V�������]�ȂǂŎg�p���܂��B
+	// -1.0から1.0にクランプされた、フレームレートに依存しないタイマー値を定義します。
+	// アニメーションや回転などで使用します。
 	float timer = 0.0f;
-	// �O���[�o���^�C�}�[�𑬂��i�܂��͒x���j���邽�߂̏搔
+	// グローバルタイマーを速く（または遅く）するための乗数
 	float timerSpeed = 0.25f;
 	bool paused = false;
 
@@ -217,19 +217,19 @@ public:
 	std::string name = "vulkanExample";
 	uint32_t apiVersion = VK_API_VERSION_1_0;
 
-	/** @brief �f�t�H���g�̃����_�[�p�X�Ŏg�p�����A�f�t�H���g�̐[�x/�X�e���V���A�^�b�`�����g */
+	/** @brief デフォルトのレンダーパスで使用される、デフォルトの深度/ステンシルアタッチメント */
 	struct {
 		VkImage image;
 		VkDeviceMemory memory;
 		VkImageView view;
 	} depthStencil{};
 
-	// OS�ŗL
+	// OS固有
 #if defined(_WIN32)
 	HWND window;
 	HINSTANCE windowInstance;
 #elif defined(VK_USE_PLATFORM_ANDROID_KHR)
-	// �A�v���P�[�V�������t�H�[�J�X����Ă���ꍇ��true�A�o�b�N�O���E���h�Ɉړ������ꍇ��false
+	// アプリケーションがフォーカスされている場合はtrue、バックグラウンドに移動した場合はfalse
 	bool focused = false;
 	struct TouchPos {
 		int32_t x;
@@ -284,10 +284,10 @@ public:
 	bool quit = false;
 #endif
 
-	/** @brief �f�t�H���g�̊��N���X�̃R���X�g���N�^ */
+	/** @brief デフォルトの基底クラスのコンストラクタ */
 	VulkanExampleBase();
 	virtual ~VulkanExampleBase();
-	/** @brief Vulkan�C���X�^���X���Z�b�g�A�b�v���A�K�v�Ȋg���@�\��L���ɂ��A�����f�o�C�X�iGPU�j�ɐڑ����܂� */
+	/** @brief Vulkanインスタンスをセットアップし、必要な拡張機能を有効にし、物理デバイス（GPU）に接続します */
 	bool initVulkan();
 
 #if defined(_WIN32)
@@ -362,51 +362,51 @@ public:
 #else
 	void setupWindow();
 #endif
-	/** @brief (���z) �A�v���P�[�V�����S�̂�Vulkan�C���X�^���X���쐬���܂� */
+	/** @brief (仮想) アプリケーション全体のVulkanインスタンスを作成します */
 	virtual VkResult createInstance();
-	/** @brief (�������z) �T���v���A�v���P�[�V�����Ŏ�������郌���_�[�֐� */
+	/** @brief (純粋仮想) サンプルアプリケーションで実装されるレンダー関数 */
 	virtual void render() = 0;
-	/** @brief (���z) �L�[�������ꂽ��ɌĂяo����A�J�X�^���L�[�n���h�����O�Ɏg�p�ł��܂� */
+	/** @brief (仮想) キーが押された後に呼び出され、カスタムキーハンドリングに使用できます */
 	virtual void keyPressed(uint32_t);
-	/** @brief (���z) �}�E�X�J�[�\�����ړ�������A�����C�x���g�i�J�����̉�]�Ȃǁj�����������O�ɌĂяo����܂� */
+	/** @brief (仮想) マウスカーソルが移動した後、内部イベント（カメラの回転など）が処理される前に呼び出されます */
 	virtual void mouseMoved(double x, double y, bool& handled);
-	/** @brief (���z) �E�B���h�E�����T�C�Y���ꂽ�Ƃ��ɌĂяo����A�T���v���A�v���P�[�V�����Ń��\�[�X���č쐬���邽�߂Ɏg�p�ł��܂� */
+	/** @brief (仮想) ウィンドウがリサイズされたときに呼び出され、サンプルアプリケーションでリソースを再作成するために使用できます */
 	virtual void windowResized();
-	/** @brief (���z) �R�}���h�o�b�t�@�̍č\�z���K�v�ȃ��\�[�X�i��F�t���[���o�b�t�@�j���č쐬���ꂽ�Ƃ��ɌĂяo����܂��B�T���v���A�v���P�[�V�����Ŏ�������܂� */
+	/** @brief (仮想) コマンドバッファの再構築が必要なリソース（例：フレームバッファ）が再作成されたときに呼び出されます。サンプルアプリケーションで実装されます */
 	virtual void buildCommandBuffers();
-	/** @brief (���z) �f�t�H���g�̐[�x�r���[�ƃX�e���V���r���[���Z�b�g�A�b�v���܂� */
+	/** @brief (仮想) デフォルトの深度ビューとステンシルビューをセットアップします */
 	virtual void setupDepthStencil();
-	/** @brief (���z) �v�����ꂽ���ׂẴX���b�v�`�F�[���C���[�W�ɑ΂��ăf�t�H���g�̃t���[���o�b�t�@���Z�b�g�A�b�v���܂� */
+	/** @brief (仮想) 要求されたすべてのスワップチェーンイメージに対してデフォルトのフレームバッファをセットアップします */
 	virtual void setupFrameBuffer();
-	/** @brief (���z) �f�t�H���g�̃����_�[�p�X���Z�b�g�A�b�v���܂� */
+	/** @brief (仮想) デフォルトのレンダーパスをセットアップします */
 	virtual void setupRenderPass();
-	/** @brief (���z) �����f�o�C�X�̋@�\���ǂݎ��ꂽ��ɌĂяo����A�f�o�C�X�ŗL���ɂ���@�\�̐ݒ�Ɏg�p�ł��܂� */
+	/** @brief (仮想) 物理デバイスの機能が読み取られた後に呼び出され、デバイスで有効にする機能の設定に使用できます */
 	virtual void getEnabledFeatures();
-	/** @brief (���z) �����f�o�C�X�̊g���@�\���ǂݎ��ꂽ��ɌĂяo����A�T�|�[�g����Ă���g���@�\���X�g�Ɋ�Â��Ċg���@�\��L���ɂ��邽�߂Ɏg�p�ł��܂� */
+	/** @brief (仮想) 物理デバイスの拡張機能が読み取られた後に呼び出され、サポートされている拡張機能リストに基づいて拡張機能を有効にするために使用できます */
 	virtual void getEnabledExtensions();
 
-	/** @brief �T���v�������s���邽�߂ɕK�v�Ȃ��ׂĂ�Vulkan���\�[�X�Ɗ֐����������܂� */
+	/** @brief サンプルを実行するために必要なすべてのVulkanリソースと関数を準備します */
 	virtual void prepare();
 
-	/** @brief �w�肳�ꂽ�V�F�[�_�[�X�e�[�W��SPIR-V�V�F�[�_�[�t�@�C�������[�h���܂� */
+	/** @brief 指定されたシェーダーステージのSPIR-Vシェーダーファイルをロードします */
 	VkPipelineShaderStageCreateInfo loadShader(std::string fileName, VkShaderStageFlagBits stage);
 
 	void windowResize();
 
-	/** @brief ���C�������_�[���[�v�̃G���g���[�|�C���g */
+	/** @brief メインレンダーループのエントリーポイント */
 	void renderLoop();
 
-	/** @brief ImGui�I�[�o�[���C�̕`��R�}���h���A�w�肳�ꂽ�R�}���h�o�b�t�@�ɒǉ����܂� */
+	/** @brief ImGuiオーバーレイの描画コマンドを、指定されたコマンドバッファに追加します */
 	void drawUI(const VkCommandBuffer commandBuffer);
 
-	/** ���̃X���b�v�`�F�[���C���[�W���擾���āA���̃t���[���̃��[�N���[�h�T�u�~�b�V�������������܂� */
+	/** 次のスワップチェーンイメージを取得して、次のフレームのワークロードサブミッションを準備します */
 	void prepareFrame();
-	/** @brief ���݂̃C���[�W���X���b�v�`�F�[���ɒ񎦂��܂� */
+	/** @brief 現在のイメージをスワップチェーンに提示します */
 	void submitFrame();
-	/** @brief (���z) �f�t�H���g�̃C���[�W�擾+�T�u�~�b�V��������уR�}���h�o�b�t�@�T�u�~�b�V�����֐� */
+	/** @brief (仮想) デフォルトのイメージ取得+サブミッションおよびコマンドバッファサブミッション関数 */
 	virtual void renderFrame();
 
-	/** @brief (���z) UI�I�[�o�[���C���X�V�����Ƃ��ɌĂяo����A�I�[�o�[���C�ɃJ�X�^���v�f��ǉ����邽�߂Ɏg�p�ł��܂� */
+	/** @brief (仮想) UIオーバーレイが更新されるときに呼び出され、オーバーレイにカスタム要素を追加するために使用できます */
 	virtual void OnUpdateUIOverlay(vks::UIOverlay* overlay);
 
 #if defined(_WIN32)

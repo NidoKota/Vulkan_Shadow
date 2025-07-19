@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.22)
 
-set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake")
+IF(WIN32)
+    set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/scripts/buildsystems/vcpkg.cmake")
+ENDIF()
 
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 file(GLOB BASE_SRC "*.cpp" "*.hpp" "*.h" "../external/imgui/*.cpp")
 file(GLOB BASE_HEADERS "*.hpp" "*.h")
@@ -15,6 +19,10 @@ set(KTX_SOURCES
     ${KTX_DIR}/lib/swap.c
     ${KTX_DIR}/lib/memstream.c
     ${KTX_DIR}/lib/filestream.c)
+
+foreach(C_SOURCE ${KTX_SOURCES})
+    set_source_files_properties(${C_SOURCE} PROPERTIES LANGUAGE C)
+endforeach()
 
 add_library(base STATIC ${BASE_SRC} ${KTX_SOURCES})
 
