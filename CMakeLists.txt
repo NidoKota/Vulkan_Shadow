@@ -39,26 +39,29 @@ ELSEIF(APPLE)
         VK_USE_PLATFORM_METAL_EXT
         VK_EXAMPLE_XCODE_GENERATED
     )
+    # ターゲットごとにObjective-C++コンパイルオプションを追加
+    IF(CMAKE_GENERATOR MATCHES "Makefiles" OR CMAKE_GENERATOR MATCHES "Ninja")
+        target_compile_options(base PUBLIC 
+            -fobjc-arc 
+            -ObjC++
+        )
+    ELSE() # Xcodeの場合
+        target_compile_options(base PUBLIC
+            -fobjc-arc 
+            -xobjective-c++
+        )
+    ENDIF()
+    
+    target_link_libraries(base PUBLIC
+        "-framework AppKit"
+        "-framework QuartzCore"
+    )
 ENDIF()
 
 set(ALL_APPS Triangle Main)
 
 foreach(APP ${ALL_APPS})
     add_executable(${APP}App src/${APP}.cpp)
-
-    IF(APPLE)
-        # ターゲットごとにObjective-C++コンパイルオプションを追加
-        IF(CMAKE_GENERATOR MATCHES "Makefiles" OR CMAKE_GENERATOR MATCHES "Ninja")
-            target_compile_options(${APP} PRIVATE -fobjc-arc -ObjC++)
-        ELSE() # Xcodeの場合
-            target_compile_options(${APP} PRIVATE -fobjc-arc -xobjective-c++)
-        ENDIF()
-        
-        target_link_libraries(${APP} PRIVATE
-            "-framework AppKit"
-            "-framework QuartzCore"
-        )
-    ENDIF()
 
     # 共通のインクルードディレクトリをターゲットに追加
     target_include_directories(${APP}App PRIVATE
